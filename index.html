@@ -792,12 +792,16 @@ function TabProvas({ provas, setProvas, materias }) {
 function TabImportar({ apiKey, setApiKey, agenda, setAgenda, materias, setMaterias }) {
   const [loadingGrade,  setLoadingGrade]  = useState(false);
   const [loadingEmenta, setLoadingEmenta] = useState(false);
-  const [status, setStatus] = useState(''); // 'ok:msg' | 'err:msg'
+  const [status,        setStatus]        = useState(''); // 'ok:msg' | 'err:msg'
+  const [previewGrade,  setPreviewGrade]  = useState(null); // {aulas, corMap, fileName} | null
+  const [previewEmenta, setPreviewEmenta] = useState(null); // [{subject,professor,topics,examDates,fileName}] | null
+  const [arquivos,      setArquivos]      = useState(() => ls('atlas_arquivos', []));
 
   const gradeRef  = useRef(null);
   const ementaRef = useRef(null);
 
-  const saveKey = (v) => { setApiKey(v); lss('atlas_apikey', v); };
+  const saveKey      = (v)    => { setApiKey(v); lss('atlas_apikey', v); };
+  const saveArquivos = (list) => { setArquivos(list); lss('atlas_arquivos', list); };
 
   const toBase64 = (file) => new Promise((res, rej) => {
     const r = new FileReader();
@@ -822,7 +826,7 @@ function TabImportar({ apiKey, setApiKey, agenda, setAgenda, materias, setMateri
     return res.json();
   };
 
-  /* ── Upload grade horária ── */
+  /* ── Upload grade → prévia ── */
   const uploadGrade = async (e) => {
     const file = e.target.files[0];
     e.target.value = '';
@@ -830,10 +834,10 @@ function TabImportar({ apiKey, setApiKey, agenda, setAgenda, materias, setMateri
     if (!apiKey.trim()) { setStatus('err:Configure a chave API primeiro.'); return; }
     setLoadingGrade(true); setStatus('');
     try {
-      const b64  = await toBase64(file);
+      const b64   = await toBase64(file);
       const isPdf = file.type === 'application/pdf';
-      const src  = { type: 'base64', media_type: file.type, data: b64 };
-      const data = await callAPI([{ role:'user', content:[
+      const src   = { type: 'base64', media_type: file.type, data: b64 };
+      const data  = await callAPI([{ role:'user', content:[
         isPdf ? { type:'document', source:src } : { type:'image', source:src },
         { type:'text', text:
 `Analise esta grade horária e extraia TODAS as aulas. Retorne APENAS um array JSON válido, sem explicações:
@@ -843,41 +847,47 @@ day: 0=Dom 1=Seg 2=Ter 3=Qua 4=Qui 5=Sex 6=Sáb. time em HH:MM. Apenas o JSON.` 
       const raw   = data.content[0].text;
       const match = raw.match(/\[[\s\S]*\]/);
       if (!match) throw new Error('Resposta fora do formato esperado.');
-      const aulas = JSON.parse(match[0]);
-      const KEY   = ['dom','seg','ter','qua','qui','sex','sab'];
-      const nova  = { ...agenda };
-      DIAS.forEach(d => { nova[d.k] = [...(nova[d.k] || [])]; });
-      /* atribui uma cor por matéria */
+      const aulas  = JSON.parse(match[0]);
       const corMap = {};
       let ci = 0;
       aulas.forEach(a => { if (!corMap[a.subject]) corMap[a.subject] = CORES[ci++ % CORES.length]; });
-      aulas.forEach(a => {
-        const k = KEY[a.day];
-        if (!k) return;
-        nova[k].push({ id:uid(), hora:a.time, desc: a.room ? `${a.subject} — ${a.room}` : a.subject, cor: corMap[a.subject] });
-      });
-      setAgenda(nova); lss('atlas_agenda', nova);
-      setStatus(`ok:${aulas.length} aula(s) importada(s) para a Agenda.`);
+      setPreviewGrade({ aulas, corMap, fileName: file.name });
     } catch (err) { setStatus(`err:${err.message}`); }
     setLoadingGrade(false);
   };
 
-  /* ── Upload ementas (múltiplos) ── */
+  /* ── Confirmar grade ── */
+  const confirmarGrade = () => {
+    const { aulas, corMap, fileName } = previewGrade;
+    const KEY  = ['dom','seg','ter','qua','qui','sex','sab'];
+    const nova = { ...agenda };
+    DIAS.forEach(d => { nova[d.k] = [...(nova[d.k] || [])]; });
+    aulas.forEach(a => {
+      const k = KEY[a.day];
+      if (!k) return;
+      nova[k].push({ id:uid(), hora:a.time, desc: a.room ? `${a.subject} — ${a.room}` : a.subject, cor: corMap[a.subject] });
+    });
+    setAgenda(nova); lss('atlas_agenda', nova);
+    saveArquivos([...arquivos, { id:uid(), nome:fileName, tipo:'grade' }]);
+    setPreviewGrade(null);
+    setStatus(`ok:${aulas.length} aula(s) importada(s) para a Agenda.`);
+  };
+
+  /* ── Upload ementas → prévia ── */
   const uploadEmenta = async (e) => {
     const files = Array.from(e.target.files);
     e.target.value = '';
     if (!files.length) return;
     if (!apiKey.trim()) { setStatus('err:Configure a chave API primeiro.'); return; }
-    setLoadingEmenta(true);
-    const novas = [...materias];
-    let ok = 0;
+    setLoadingEmenta(true); setStatus('');
+    const items = [];
     for (const file of files) {
       setStatus(`ok:Processando ${file.name}…`);
       try {
-        const b64  = await toBase64(file);
+        const b64   = await toBase64(file);
         const isPdf = file.type === 'application/pdf';
-        const src  = { type: 'base64', media_type: file.type, data: b64 };
-        const data = await callAPI([{ role:'user', content:[
+        const src   = { type: 'base64', media_type: file.type, data: b64 };
+        const data  = await callAPI([{ role:'user', content:[
           isPdf ? { type:'document', source:src } : { type:'image', source:src },
           { type:'text', text:
 `Analise esta ementa e extraia as informações. Retorne APENAS um objeto JSON válido, sem explicações:
@@ -887,33 +897,38 @@ examDates em YYYY-MM-DD. Apenas o JSON.` }
         const raw   = data.content[0].text;
         const match = raw.match(/\{[\s\S]*\}/);
         if (!match) throw new Error('Resposta fora do formato esperado.');
-        const em  = JSON.parse(match[0]);
-        const idx = novas.findIndex(m => m.nome.toLowerCase() === (em.subject||'').toLowerCase());
-        if (idx >= 0) {
-          novas[idx] = { ...novas[idx], professor: em.professor, topics: em.topics||[], examDates: em.examDates||[] };
-        } else {
-          novas.push({ id:uid(), nome:em.subject, cor:CORES[novas.length % CORES.length],
-                       perf:50, professor:em.professor, topics:em.topics||[], examDates:em.examDates||[] });
-        }
-        ok++;
+        items.push({ ...JSON.parse(match[0]), fileName: file.name });
       } catch (err) { setStatus(`err:Erro em "${file.name}": ${err.message}`); }
     }
-    setMaterias(novas); lss('atlas_mat', novas);
-    if (ok) setStatus(`ok:${ok} ementa(s) processada(s).`);
+    if (items.length) { setPreviewEmenta(items); setStatus(''); }
     setLoadingEmenta(false);
   };
 
-  /* ── Deleção inline ── */
-  const delAula = (dayK, id) => {
-    const nova = { ...agenda, [dayK]: agenda[dayK].filter(e => e.id !== id) };
-    setAgenda(nova); lss('atlas_agenda', nova);
-  };
-  const delMat = (id) => {
-    const nova = materias.filter(m => m.id !== id);
-    setMaterias(nova); lss('atlas_mat', nova);
+  /* ── Confirmar ementas ── */
+  const confirmarEmenta = () => {
+    const novas = [...materias];
+    previewEmenta.forEach(em => {
+      const idx = novas.findIndex(m => m.nome.toLowerCase() === (em.subject||'').toLowerCase());
+      if (idx >= 0) {
+        novas[idx] = { ...novas[idx], professor:em.professor, topics:em.topics||[], examDates:em.examDates||[] };
+      } else {
+        novas.push({ id:uid(), nome:em.subject, cor:CORES[novas.length % CORES.length],
+                     perf:50, professor:em.professor, topics:em.topics||[], examDates:em.examDates||[] });
+      }
+    });
+    setMaterias(novas); lss('atlas_mat', novas);
+    saveArquivos([...arquivos, ...previewEmenta.map(em => ({ id:uid(), nome:em.fileName, tipo:'ementa' }))]);
+    setStatus(`ok:${previewEmenta.length} ementa(s) importada(s).`);
+    setPreviewEmenta(null);
   };
 
+  /* ── Deleção inline ── */
+  const delAula     = (dayK, id) => { const n={...agenda,[dayK]:agenda[dayK].filter(e=>e.id!==id)}; setAgenda(n); lss('atlas_agenda',n); };
+  const delMat      = (id)       => { const n=materias.filter(m=>m.id!==id); setMaterias(n); lss('atlas_mat',n); };
+  const delArquivo  = (id)       => saveArquivos(arquivos.filter(a => a.id !== id));
+
   /* ── Derivados ── */
+  const KEY_NAMES  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const totalAulas  = Object.values(agenda).reduce((s, d) => s + d.length, 0);
   const matComDados = materias.filter(m => m.topics?.length || m.examDates?.length || m.professor);
   const temDados    = totalAulas > 0 || matComDados.length > 0;
@@ -938,51 +953,147 @@ examDates em YYYY-MM-DD. Apenas o JSON.` }
         )}
       </div>
 
-      {/* Grade horária */}
-      <div className="card">
-        <div className="card-t"><IcoCal/> Grade Horária</div>
-        <div style={{fontSize:'.82rem',color:'var(--muted)',marginBottom:12,lineHeight:1.5}}>
-          PDF ou foto — as aulas são importadas diretamente para a Agenda.
-        </div>
-        <input ref={gradeRef} type="file" accept="application/pdf,image/*"
-          style={{display:'none'}} onChange={uploadGrade}/>
-        <button className="btn btn-p btn-w btn-sm"
-          onClick={() => gradeRef.current?.click()} disabled={loadingGrade}>
-          {loadingGrade ? 'Processando…' : 'Enviar grade horária'}
-        </button>
-      </div>
-
-      {/* Ementas */}
-      <div className="card">
-        <div className="card-t"><IcoBook/> Ementas das Disciplinas</div>
-        <div style={{fontSize:'.82rem',color:'var(--muted)',marginBottom:12,lineHeight:1.5}}>
-          Um ou vários PDFs/fotos — tópicos e datas de prova vão para as Matérias.
-        </div>
-        <input ref={ementaRef} type="file" accept="application/pdf,image/*"
-          multiple style={{display:'none'}} onChange={uploadEmenta}/>
-        <button className="btn btn-p btn-w btn-sm"
-          onClick={() => ementaRef.current?.click()} disabled={loadingEmenta}>
-          {loadingEmenta ? 'Processando…' : 'Enviar ementas'}
-        </button>
-      </div>
-
-      {/* Status */}
-      {status && <div className={isErr ? 'status-err' : 'status-ok'}>{msg}</div>}
-
-      {/* Dados importados */}
-      <div className="card-t" style={{marginTop:2,marginBottom:12}}>
-        <IcoUpload/> Dados importados
-      </div>
-
-      {!temDados ? (
-        <div className="empty">
-          <IcoUpload/>
-          <div className="empty-t">Nenhum dado importado ainda</div>
-          <div className="empty-s">Envie uma grade ou ementa para começar</div>
+      {/* Grade horária — upload ou prévia */}
+      {!previewGrade ? (
+        <div className="card">
+          <div className="card-t"><IcoCal/> Grade Horária</div>
+          <div style={{fontSize:'.82rem',color:'var(--muted)',marginBottom:12,lineHeight:1.5}}>
+            PDF ou foto — revise as aulas encontradas antes de importar para a Agenda.
+          </div>
+          <input ref={gradeRef} type="file" accept="application/pdf,image/*"
+            style={{display:'none'}} onChange={uploadGrade}/>
+          <button className="btn btn-p btn-w btn-sm"
+            onClick={() => gradeRef.current?.click()} disabled={loadingGrade}>
+            {loadingGrade ? 'Processando…' : 'Enviar grade horária'}
+          </button>
         </div>
       ) : (
+        <div className="card fi">
+          <div className="card-t" style={{marginBottom:14}}>
+            <IcoCal/> Prévia — {previewGrade.aulas.length} aula(s) encontrada(s)
+          </div>
+          <div style={{marginBottom:14}}>
+            {[...previewGrade.aulas]
+              .sort((a,b) => a.day - b.day || a.time.localeCompare(b.time))
+              .map((a,i) => (
+                <div key={i} className="imp-ev" style={{marginBottom:5}}>
+                  <div style={{width:9,height:9,borderRadius:'50%',
+                    background:previewGrade.corMap[a.subject],flexShrink:0}}/>
+                  <span style={{flex:1,minWidth:0,fontSize:'.82rem'}}>
+                    <span style={{fontWeight:800,color:previewGrade.corMap[a.subject],marginRight:5,fontSize:'.72rem'}}>
+                      {KEY_NAMES[a.day]}
+                    </span>
+                    <span style={{fontWeight:700,color:'var(--prim)',marginRight:6}}>{a.time}</span>
+                    {a.subject}{a.room ? ` — ${a.room}` : ''}
+                  </span>
+                </div>
+              ))
+            }
+          </div>
+          <div className="f g8">
+            <button className="btn btn-p" style={{flex:1,fontSize:'.82rem'}} onClick={confirmarGrade}>
+              Confirmar e Importar
+            </button>
+            <button className="btn btn-g" style={{flex:1,fontSize:'.82rem'}} onClick={() => setPreviewGrade(null)}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Ementas — upload ou prévia */}
+      {!previewEmenta ? (
+        <div className="card">
+          <div className="card-t"><IcoBook/> Ementas das Disciplinas</div>
+          <div style={{fontSize:'.82rem',color:'var(--muted)',marginBottom:12,lineHeight:1.5}}>
+            Um ou vários PDFs/fotos — revise antes de salvar nas Matérias.
+          </div>
+          <input ref={ementaRef} type="file" accept="application/pdf,image/*"
+            multiple style={{display:'none'}} onChange={uploadEmenta}/>
+          <button className="btn btn-p btn-w btn-sm"
+            onClick={() => ementaRef.current?.click()} disabled={loadingEmenta}>
+            {loadingEmenta ? 'Processando…' : 'Enviar ementas'}
+          </button>
+        </div>
+      ) : (
+        <div className="card fi">
+          <div className="card-t" style={{marginBottom:14}}>
+            <IcoBook/> Prévia — {previewEmenta.length} ementa(s)
+          </div>
+          <div style={{marginBottom:14}}>
+            {previewEmenta.map((em,i) => (
+              <div key={i} style={{background:'var(--surf2)',borderRadius:'var(--r-sm)',
+                                   padding:'12px 14px',marginBottom:8}}>
+                <div style={{fontFamily:'Sora,sans-serif',fontWeight:600,
+                              fontSize:'.9rem',marginBottom:2}}>{em.subject}</div>
+                {em.professor && (
+                  <div style={{fontSize:'.78rem',color:'var(--muted)',marginBottom:6}}>{em.professor}</div>
+                )}
+                {em.topics?.length > 0 && (
+                  <div>
+                    <div className="imp-section" style={{marginBottom:4}}>Tópicos</div>
+                    {em.topics.slice(0,5).map((t,j) => (
+                      <div key={j} style={{fontSize:'.78rem',color:'var(--text)',marginBottom:2}}>• {t}</div>
+                    ))}
+                    {em.topics.length > 5 && (
+                      <div style={{fontSize:'.74rem',color:'var(--muted)',marginTop:2}}>
+                        +{em.topics.length - 5} tópico(s)
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="f g8">
+            <button className="btn btn-p" style={{flex:1,fontSize:'.82rem'}} onClick={confirmarEmenta}>
+              Confirmar e Importar
+            </button>
+            <button className="btn btn-g" style={{flex:1,fontSize:'.82rem'}} onClick={() => setPreviewEmenta(null)}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Status */}
+      {status && !previewGrade && !previewEmenta && (
+        <div className={isErr ? 'status-err' : 'status-ok'}>{msg}</div>
+      )}
+
+      {/* Arquivos enviados */}
+      {arquivos.length > 0 && (
         <>
-          {/* Agenda */}
+          <div className="card-t" style={{marginTop:4,marginBottom:10}}>
+            <IcoUpload/> Arquivos enviados
+          </div>
+          {arquivos.map(a => (
+            <div key={a.id} className="imp-ev fi" style={{marginBottom:6}}>
+              <span style={{
+                fontSize:'.68rem',fontWeight:800,padding:'2px 7px',borderRadius:'var(--r-f)',
+                background: a.tipo==='grade' ? '#ede9fe' : '#d1fae5',
+                color:      a.tipo==='grade' ? '#6d28d9' : '#065f46',
+                flexShrink: 0,
+              }}>
+                {a.tipo === 'grade' ? 'GRADE' : 'EMENTA'}
+              </span>
+              <span style={{flex:1,minWidth:0,fontSize:'.82rem',
+                            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                {a.nome}
+              </span>
+              <button className="btn-x" onClick={() => delArquivo(a.id)}>✕</button>
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* Dados importados */}
+      {temDados && (
+        <>
+          <div className="card-t" style={{marginTop:14,marginBottom:12}}>
+            <IcoCal/> Dados importados
+          </div>
+
           {totalAulas > 0 && (
             <div className="card fi">
               <div className="card-t" style={{marginBottom:12}}><IcoCal/> Agenda — {totalAulas} aula(s)</div>
@@ -992,7 +1103,8 @@ examDates em YYYY-MM-DD. Apenas o JSON.` }
                   {[...agenda[d.k]].sort((a,b)=>a.hora.localeCompare(b.hora)).map(ev => (
                     <div key={ev.id} className="imp-ev">
                       <span style={{flex:1,minWidth:0}}>
-                        <span className="imp-ev-hora" style={{color: ev.cor || 'var(--prim)'}}>{ev.hora}</span>{ev.desc}
+                        <span className="imp-ev-hora" style={{color: ev.cor||'var(--prim)'}}>{ev.hora}</span>
+                        {ev.desc}
                       </span>
                       <button className="btn-x" onClick={() => delAula(d.k, ev.id)}>✕</button>
                     </div>
@@ -1002,7 +1114,6 @@ examDates em YYYY-MM-DD. Apenas o JSON.` }
             </div>
           )}
 
-          {/* Matérias com dados */}
           {matComDados.map(m => (
             <div key={m.id} className="card fi" style={{position:'relative',overflow:'hidden'}}>
               <div style={{position:'absolute',left:0,top:0,bottom:0,width:4,background:m.cor}}/>
@@ -1014,7 +1125,6 @@ examDates em YYYY-MM-DD. Apenas o JSON.` }
                   </div>
                   <button className="btn btn-d btn-sm" onClick={() => delMat(m.id)}><IcoTrash/></button>
                 </div>
-
                 {m.topics?.length > 0 && (
                   <div style={{marginBottom:10}}>
                     <div className="imp-section">Tópicos</div>
@@ -1023,7 +1133,6 @@ examDates em YYYY-MM-DD. Apenas o JSON.` }
                     </div>
                   </div>
                 )}
-
                 {m.examDates?.length > 0 && (
                   <div>
                     <div className="imp-section">Avaliações</div>
@@ -1045,6 +1154,14 @@ examDates em YYYY-MM-DD. Apenas o JSON.` }
             </div>
           ))}
         </>
+      )}
+
+      {!temDados && arquivos.length === 0 && (
+        <div className="empty">
+          <IcoUpload/>
+          <div className="empty-t">Nenhum dado importado ainda</div>
+          <div className="empty-s">Envie uma grade ou ementa para começar</div>
+        </div>
       )}
     </div>
   );
