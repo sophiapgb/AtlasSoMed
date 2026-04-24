@@ -55,12 +55,18 @@
   html, body { height: 100%; overflow: hidden; }
   body {
     font-family: 'Nunito', sans-serif;
-    background: var(--bg);
+    background: var(--border);
     color: var(--text);
     -webkit-font-smoothing: antialiased;
     overscroll-behavior: none;
+    display: flex; justify-content: center;
   }
-  #root { height: 100%; display: flex; flex-direction: column; }
+  #root {
+    width: 100%; max-width: 480px; height: 100%;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+    background: var(--bg);
+  }
   ::-webkit-scrollbar { width: 3px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--prim-l); border-radius: 2px; }
@@ -95,15 +101,15 @@
 
   .main {
     flex: 1; overflow-y: auto; overflow-x: hidden;
-    padding: 18px 14px calc(var(--nav) + 18px);
+    padding: 18px 16px calc(var(--nav) + 18px);
   }
-  .page { max-width: 480px; margin: 0 auto; }
+  .page { width: 100%; }
 
   /* ══════════════════════════════════
      NAV INFERIOR
   ══════════════════════════════════ */
   .bnav {
-    position: fixed; bottom: 0; left: 0; right: 0;
+    position: absolute; bottom: 0; left: 0; right: 0;
     height: var(--nav);
     background: var(--surf); border-top: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-around;
@@ -449,11 +455,6 @@ const IcoClip = () => (
     <path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/>
   </svg>
 );
-const IcoPlus = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-    <line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>
-  </svg>
-);
 const IcoTrash = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="3 6 5 6 21 6"/>
@@ -583,7 +584,7 @@ function TabAgenda({ agenda, setAgenda }) {
           <input className="inp" value={desc} onChange={e=>setDesc(e.target.value)}
             onKeyDown={e=>e.key==='Enter'&&add()} placeholder="Ex: Anatomia — Sala 3"/>
         </div>
-        <button className="btn btn-p btn-w btn-sm" onClick={add}><IcoPlus/> Adicionar</button>
+        <button className="btn btn-p btn-w btn-sm" onClick={add}>Adicionar</button>
       </div>
 
       {eventos.length === 0
@@ -641,7 +642,7 @@ function TabMaterias({ materias, setMaterias }) {
             </div>
           </div>
         </div>
-        <button className="btn btn-p btn-w btn-sm" onClick={add}><IcoPlus/> Adicionar</button>
+        <button className="btn btn-p btn-w btn-sm" onClick={add}>Adicionar</button>
       </div>
 
       {materias.length === 0
@@ -707,7 +708,7 @@ function TabProvas({ provas, setProvas, materias }) {
           </select>
           <input className="inp" type="date" value={data} onChange={e=>setData(e.target.value)}/>
         </div>
-        <button className="btn btn-p btn-w btn-sm" onClick={add}><IcoPlus/> Adicionar</button>
+        <button className="btn btn-p btn-w btn-sm" onClick={add}>Adicionar</button>
       </div>
 
       {sorted.length === 0
