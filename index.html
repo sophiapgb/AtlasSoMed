@@ -379,12 +379,47 @@
   .gt   { background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
   .fi   { animation: fi .22s ease; }
   @keyframes fi { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+
+  /* ══════════════════════════════════
+     ABA IMPORTAR
+  ══════════════════════════════════ */
+  .status-ok {
+    background: #d1fae5; color: #065f46;
+    padding: 10px 14px; border-radius: var(--r-sm);
+    font-size: .82rem; font-weight: 700; margin-bottom: 14px;
+  }
+  .status-err {
+    background: #fee2e2; color: #991b1b;
+    padding: 10px 14px; border-radius: var(--r-sm);
+    font-size: .82rem; font-weight: 700; margin-bottom: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    .status-ok  { background: #064e3b; color: #6ee7b7; }
+    .status-err { background: #7f1d1d; color: #fca5a5; }
+  }
+  .imp-section {
+    font-size: .72rem; font-weight: 800; color: var(--text2);
+    letter-spacing: .5px; text-transform: uppercase; margin-bottom: 5px;
+  }
+  .imp-tag {
+    font-size: .8rem; padding: 4px 8px;
+    background: var(--surf2); border-radius: 6px; color: var(--text);
+  }
+  .imp-ev {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 6px 10px; background: var(--surf2);
+    border-radius: 8px; margin-bottom: 4px; font-size: .82rem;
+  }
+  .imp-ev-hora { color: var(--prim); font-weight: 700; margin-right: 8px; }
+  .btn-x { background:transparent; border:none; color:var(--muted); cursor:pointer;
+            font-size:.9rem; padding:0 4px; line-height:1; flex-shrink:0; }
+  .btn-x:hover { color:#ef4444; }
   </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState } = React;
+const { useState, useRef } = React;
 
 /* ── Helpers ─────────────────────────────────────── */
 const ls  = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } };
@@ -464,6 +499,18 @@ const IcoTrash = () => (
 const IcoClock = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+  </svg>
+);
+const IcoUpload = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>
+  </svg>
+);
+const IcoKey = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="7.5" cy="15.5" r="5.5"/>
+    <path d="m21 2-9.6 9.6M15.5 7.5l2 2L21 6l-2-2"/>
   </svg>
 );
 
@@ -739,24 +786,290 @@ function TabProvas({ provas, setProvas, materias }) {
 
 
 /* ══════════════════════════════════════════════════
+   ABA: IMPORTAR
+══════════════════════════════════════════════════ */
+function TabImportar({ apiKey, setApiKey, agenda, setAgenda, materias, setMaterias }) {
+  const [loadingGrade,  setLoadingGrade]  = useState(false);
+  const [loadingEmenta, setLoadingEmenta] = useState(false);
+  const [status, setStatus] = useState(''); // 'ok:msg' | 'err:msg'
+
+  const gradeRef  = useRef(null);
+  const ementaRef = useRef(null);
+
+  const saveKey = (v) => { setApiKey(v); lss('atlas_apikey', v); };
+
+  const toBase64 = (file) => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+
+  const callAPI = async (messages, beta) => {
+    const headers = {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey.trim(),
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    };
+    if (beta) headers['anthropic-beta'] = beta;
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', headers,
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2048, messages })
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+    return res.json();
+  };
+
+  /* ── Upload grade horária ── */
+  const uploadGrade = async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!apiKey.trim()) { setStatus('err:Configure a chave API primeiro.'); return; }
+    setLoadingGrade(true); setStatus('');
+    try {
+      const b64  = await toBase64(file);
+      const isPdf = file.type === 'application/pdf';
+      const src  = { type: 'base64', media_type: file.type, data: b64 };
+      const data = await callAPI([{ role:'user', content:[
+        isPdf ? { type:'document', source:src } : { type:'image', source:src },
+        { type:'text', text:
+`Analise esta grade horária e extraia TODAS as aulas. Retorne APENAS um array JSON válido, sem explicações:
+[{"subject":"Nome da Disciplina","day":1,"time":"08:00","room":"Sala 101"}]
+day: 0=Dom 1=Seg 2=Ter 3=Qua 4=Qui 5=Sex 6=Sáb. time em HH:MM. Apenas o JSON.` }
+      ]}], isPdf ? 'pdfs-2024-09-25' : undefined);
+      const raw   = data.content[0].text;
+      const match = raw.match(/\[[\s\S]*\]/);
+      if (!match) throw new Error('Resposta fora do formato esperado.');
+      const aulas = JSON.parse(match[0]);
+      const KEY   = ['dom','seg','ter','qua','qui','sex','sab'];
+      const nova  = { ...agenda };
+      DIAS.forEach(d => { nova[d.k] = [...(nova[d.k] || [])]; });
+      aulas.forEach(a => {
+        const k = KEY[a.day];
+        if (!k) return;
+        nova[k].push({ id:uid(), hora:a.time, desc: a.room ? `${a.subject} — ${a.room}` : a.subject });
+      });
+      setAgenda(nova); lss('atlas_agenda', nova);
+      setStatus(`ok:${aulas.length} aula(s) importada(s) para a Agenda.`);
+    } catch (err) { setStatus(`err:${err.message}`); }
+    setLoadingGrade(false);
+  };
+
+  /* ── Upload ementas (múltiplos) ── */
+  const uploadEmenta = async (e) => {
+    const files = Array.from(e.target.files);
+    e.target.value = '';
+    if (!files.length) return;
+    if (!apiKey.trim()) { setStatus('err:Configure a chave API primeiro.'); return; }
+    setLoadingEmenta(true);
+    const novas = [...materias];
+    let ok = 0;
+    for (const file of files) {
+      setStatus(`ok:Processando ${file.name}…`);
+      try {
+        const b64  = await toBase64(file);
+        const isPdf = file.type === 'application/pdf';
+        const src  = { type: 'base64', media_type: file.type, data: b64 };
+        const data = await callAPI([{ role:'user', content:[
+          isPdf ? { type:'document', source:src } : { type:'image', source:src },
+          { type:'text', text:
+`Analise esta ementa e extraia as informações. Retorne APENAS um objeto JSON válido, sem explicações:
+{"subject":"Nome da Disciplina","professor":"Nome do Professor","topics":["Tópico 1","Tópico 2"],"examDates":["2025-06-15"]}
+examDates em YYYY-MM-DD. Apenas o JSON.` }
+        ]}], isPdf ? 'pdfs-2024-09-25' : undefined);
+        const raw   = data.content[0].text;
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('Resposta fora do formato esperado.');
+        const em  = JSON.parse(match[0]);
+        const idx = novas.findIndex(m => m.nome.toLowerCase() === (em.subject||'').toLowerCase());
+        if (idx >= 0) {
+          novas[idx] = { ...novas[idx], professor: em.professor, topics: em.topics||[], examDates: em.examDates||[] };
+        } else {
+          novas.push({ id:uid(), nome:em.subject, cor:CORES[novas.length % CORES.length],
+                       perf:50, professor:em.professor, topics:em.topics||[], examDates:em.examDates||[] });
+        }
+        ok++;
+      } catch (err) { setStatus(`err:Erro em "${file.name}": ${err.message}`); }
+    }
+    setMaterias(novas); lss('atlas_mat', novas);
+    if (ok) setStatus(`ok:${ok} ementa(s) processada(s).`);
+    setLoadingEmenta(false);
+  };
+
+  /* ── Deleção inline ── */
+  const delAula = (dayK, id) => {
+    const nova = { ...agenda, [dayK]: agenda[dayK].filter(e => e.id !== id) };
+    setAgenda(nova); lss('atlas_agenda', nova);
+  };
+  const delMat = (id) => {
+    const nova = materias.filter(m => m.id !== id);
+    setMaterias(nova); lss('atlas_mat', nova);
+  };
+
+  /* ── Derivados ── */
+  const totalAulas  = Object.values(agenda).reduce((s, d) => s + d.length, 0);
+  const matComDados = materias.filter(m => m.topics?.length || m.examDates?.length || m.professor);
+  const temDados    = totalAulas > 0 || matComDados.length > 0;
+  const isErr = status.startsWith('err:');
+  const msg   = status.replace(/^(ok|err):/, '');
+
+  return (
+    <div>
+      <div className="ph">
+        <div className="ph-t">Importar</div>
+        <div className="ph-s">Preencha agenda e matérias automaticamente com IA</div>
+      </div>
+
+      {/* Chave API */}
+      <div className="card">
+        <div className="card-t"><IcoKey/> Chave API Anthropic</div>
+        <input className="inp" type="password" value={apiKey}
+          onChange={e => saveKey(e.target.value)}
+          placeholder="sk-ant-api03-…" autoComplete="off"/>
+        {apiKey.trim() && (
+          <div style={{fontSize:'.75rem',color:'#10b981',fontWeight:700,marginTop:6}}>✓ Chave salva</div>
+        )}
+      </div>
+
+      {/* Grade horária */}
+      <div className="card">
+        <div className="card-t"><IcoCal/> Grade Horária</div>
+        <div style={{fontSize:'.82rem',color:'var(--muted)',marginBottom:12,lineHeight:1.5}}>
+          PDF ou foto — as aulas são importadas diretamente para a Agenda.
+        </div>
+        <input ref={gradeRef} type="file" accept="application/pdf,image/*"
+          style={{display:'none'}} onChange={uploadGrade}/>
+        <button className="btn btn-p btn-w btn-sm"
+          onClick={() => gradeRef.current?.click()} disabled={loadingGrade}>
+          {loadingGrade ? 'Processando…' : 'Enviar grade horária'}
+        </button>
+      </div>
+
+      {/* Ementas */}
+      <div className="card">
+        <div className="card-t"><IcoBook/> Ementas das Disciplinas</div>
+        <div style={{fontSize:'.82rem',color:'var(--muted)',marginBottom:12,lineHeight:1.5}}>
+          Um ou vários PDFs/fotos — tópicos e datas de prova vão para as Matérias.
+        </div>
+        <input ref={ementaRef} type="file" accept="application/pdf,image/*"
+          multiple style={{display:'none'}} onChange={uploadEmenta}/>
+        <button className="btn btn-p btn-w btn-sm"
+          onClick={() => ementaRef.current?.click()} disabled={loadingEmenta}>
+          {loadingEmenta ? 'Processando…' : 'Enviar ementas'}
+        </button>
+      </div>
+
+      {/* Status */}
+      {status && <div className={isErr ? 'status-err' : 'status-ok'}>{msg}</div>}
+
+      {/* Dados importados */}
+      <div className="card-t" style={{marginTop:2,marginBottom:12}}>
+        <IcoUpload/> Dados importados
+      </div>
+
+      {!temDados ? (
+        <div className="empty">
+          <IcoUpload/>
+          <div className="empty-t">Nenhum dado importado ainda</div>
+          <div className="empty-s">Envie uma grade ou ementa para começar</div>
+        </div>
+      ) : (
+        <>
+          {/* Agenda */}
+          {totalAulas > 0 && (
+            <div className="card fi">
+              <div className="card-t" style={{marginBottom:12}}><IcoCal/> Agenda — {totalAulas} aula(s)</div>
+              {DIAS.map(d => agenda[d.k]?.length ? (
+                <div key={d.k} style={{marginBottom:12}}>
+                  <div className="imp-section">{d.ext}</div>
+                  {[...agenda[d.k]].sort((a,b)=>a.hora.localeCompare(b.hora)).map(ev => (
+                    <div key={ev.id} className="imp-ev">
+                      <span style={{flex:1,minWidth:0}}>
+                        <span className="imp-ev-hora">{ev.hora}</span>{ev.desc}
+                      </span>
+                      <button className="btn-x" onClick={() => delAula(d.k, ev.id)}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              ) : null)}
+            </div>
+          )}
+
+          {/* Matérias com dados */}
+          {matComDados.map(m => (
+            <div key={m.id} className="card fi" style={{position:'relative',overflow:'hidden'}}>
+              <div style={{position:'absolute',left:0,top:0,bottom:0,width:4,background:m.cor}}/>
+              <div style={{paddingLeft:12}}>
+                <div className="f ac jb mb10">
+                  <div>
+                    <div style={{fontFamily:'Sora,sans-serif',fontWeight:600,fontSize:'.92rem'}}>{m.nome}</div>
+                    {m.professor && <div style={{fontSize:'.75rem',color:'var(--muted)',marginTop:2}}>{m.professor}</div>}
+                  </div>
+                  <button className="btn btn-d btn-sm" onClick={() => delMat(m.id)}><IcoTrash/></button>
+                </div>
+
+                {m.topics?.length > 0 && (
+                  <div style={{marginBottom:10}}>
+                    <div className="imp-section">Tópicos</div>
+                    <div style={{display:'flex',flexDirection:'column',gap:3}}>
+                      {m.topics.map((t,i) => <div key={i} className="imp-tag">• {t}</div>)}
+                    </div>
+                  </div>
+                )}
+
+                {m.examDates?.length > 0 && (
+                  <div>
+                    <div className="imp-section">Avaliações</div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+                      {m.examDates.map((d,i) => {
+                        const cd = countdown(d);
+                        return (
+                          <span key={i} className={`badge ${cd.cls}`}>
+                            <IcoClock/>
+                            {new Date(d+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}
+                            {' · '}{cd.lbl}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════
    APP ROOT
 ══════════════════════════════════════════════════ */
 function App() {
   const [aba,      setAba]     = useState('inicio');
+  const [apiKey,   setApiKey]  = useState(() => ls('atlas_apikey', ''));
   const [agenda,   setAgenda]  = useState(() => { const v=ls('atlas_agenda',null); return v||{...AGENDA_VAZIA}; });
   const [materias, setMat]     = useState(() => ls('atlas_mat',   []));
   const [provas,   setPro]     = useState(() => ls('atlas_pro',   []));
+
   const ABAS = [
-    { id:'inicio',   lbl:'Início',   Ico: IcoHome  },
-    { id:'agenda',   lbl:'Agenda',   Ico: IcoCal   },
-    { id:'materias', lbl:'Matérias', Ico: IcoBook  },
-    { id:'provas',   lbl:'Provas',   Ico: IcoClip  },
+    { id:'inicio',   lbl:'Início',   Ico: IcoHome   },
+    { id:'agenda',   lbl:'Agenda',   Ico: IcoCal    },
+    { id:'importar', lbl:'Importar', Ico: IcoUpload },
+    { id:'materias', lbl:'Matérias', Ico: IcoBook   },
+    { id:'provas',   lbl:'Provas',   Ico: IcoClip   },
   ];
 
   const conteudo = (() => {
     switch (aba) {
       case 'inicio':   return <TabInicio   agenda={agenda} materias={materias} provas={provas}/>;
       case 'agenda':   return <TabAgenda   agenda={agenda} setAgenda={setAgenda}/>;
+      case 'importar': return <TabImportar apiKey={apiKey} setApiKey={setApiKey}
+                                           agenda={agenda} setAgenda={setAgenda}
+                                           materias={materias} setMaterias={setMat}/>;
       case 'materias': return <TabMaterias materias={materias} setMaterias={setMat}/>;
       case 'provas':   return <TabProvas   provas={provas} setProvas={setPro} materias={materias}/>;
       default:         return null;
