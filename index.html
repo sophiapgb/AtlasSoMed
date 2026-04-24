@@ -562,7 +562,8 @@ function TabInicio({ agenda, materias, provas }) {
           ? <div style={{fontSize:'.82rem',color:'var(--muted)',textAlign:'center',padding:'8px 0'}}>Nenhuma aula para hoje</div>
           : aulasHoje.map((a,i) => (
             <div key={i} className="today-row">
-              <div className="today-hora">{a.hora}</div>
+              {a.cor && <div style={{width:8,height:8,borderRadius:'50%',background:a.cor,flexShrink:0}}/>}
+              <div className="today-hora" style={a.cor ? {color:a.cor} : {}}>{a.hora}</div>
               <div className="today-desc">{a.desc}</div>
             </div>
           ))
@@ -638,10 +639,10 @@ function TabAgenda({ agenda, setAgenda }) {
         ? <div className="empty fi"><IcoCal/><div className="empty-t">Sem aulas</div><div className="empty-s">Adicione aulas para {DIAS.find(d=>d.k===dia)?.ext}</div></div>
         : eventos.map(ev => (
           <div key={ev.id} className="item fi">
-            <div className="item-dot" style={{background:'var(--grad)'}}/>
+            <div className="item-dot" style={{background: ev.cor || 'var(--prim)'}}/>
             <div className="item-main">
               <div className="item-title">{ev.desc}</div>
-              <div className="item-sub">{ev.hora}</div>
+              <div className="item-sub" style={{color: ev.cor || 'var(--muted)'}}>{ev.hora}</div>
             </div>
             <button className="btn btn-d btn-sm" onClick={()=>del(ev.id)}><IcoTrash/></button>
           </div>
@@ -846,10 +847,14 @@ day: 0=Dom 1=Seg 2=Ter 3=Qua 4=Qui 5=Sex 6=Sáb. time em HH:MM. Apenas o JSON.` 
       const KEY   = ['dom','seg','ter','qua','qui','sex','sab'];
       const nova  = { ...agenda };
       DIAS.forEach(d => { nova[d.k] = [...(nova[d.k] || [])]; });
+      /* atribui uma cor por matéria */
+      const corMap = {};
+      let ci = 0;
+      aulas.forEach(a => { if (!corMap[a.subject]) corMap[a.subject] = CORES[ci++ % CORES.length]; });
       aulas.forEach(a => {
         const k = KEY[a.day];
         if (!k) return;
-        nova[k].push({ id:uid(), hora:a.time, desc: a.room ? `${a.subject} — ${a.room}` : a.subject });
+        nova[k].push({ id:uid(), hora:a.time, desc: a.room ? `${a.subject} — ${a.room}` : a.subject, cor: corMap[a.subject] });
       });
       setAgenda(nova); lss('atlas_agenda', nova);
       setStatus(`ok:${aulas.length} aula(s) importada(s) para a Agenda.`);
@@ -987,7 +992,7 @@ examDates em YYYY-MM-DD. Apenas o JSON.` }
                   {[...agenda[d.k]].sort((a,b)=>a.hora.localeCompare(b.hora)).map(ev => (
                     <div key={ev.id} className="imp-ev">
                       <span style={{flex:1,minWidth:0}}>
-                        <span className="imp-ev-hora">{ev.hora}</span>{ev.desc}
+                        <span className="imp-ev-hora" style={{color: ev.cor || 'var(--prim)'}}>{ev.hora}</span>{ev.desc}
                       </span>
                       <button className="btn-x" onClick={() => delAula(d.k, ev.id)}>✕</button>
                     </div>
