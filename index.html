@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AtlasSoMed</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;700&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.5/babel.min.js"></script>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --surface: #f8f9fa;
+            --primary: #8b5cf6;
+            --text: #333333;
+            --text-secondary: #666666;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1a1a1a;
+                --surface: #2a2a2a;
+                --text: #ffffff;
+                --text-secondary: #cccccc;
+            }
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .logo {
+            font-family: 'Sora', sans-serif;
+            font-size: 2em;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo span {
+            color: var(--primary);
+        }
+        .nav {
+            display: flex;
+            justify-content: space-around;
+            background-color: var(--surface);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .nav-item {
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 8px;
+            transition: background-color 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--text);
+        }
+        .nav-item.active {
+            background-color: var(--primary);
+            color: white;
+        }
+        .nav-item svg {
+            width: 24px;
+            height: 24px;
+            margin-bottom: 5px;
+        }
+        .tab-content {
+            background-color: var(--surface);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        input, textarea, button, select {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        input, textarea {
+            width: 100%;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            background-color: var(--bg);
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .chat {
+            height: 300px;
+            overflow-y: auto;
+            background-color: var(--bg);
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+        }
+        .message {
+            margin: 5px 0;
+        }
+        .user { text-align: right; }
+        .ai { text-align: left; }
+        .week {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+        }
+        .day {
+            background-color: var(--bg);
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        .slider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .slider input {
+            flex: 1;
+        }
+        .countdown {
+            font-weight: bold;
+            color: var(--primary);
+        }
+        .api-key {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function App() {
+            const [activeTab, setActiveTab] = useState('ia');
+            const [apiKey, setApiKey] = useState(localStorage.getItem('atlas_api_key') || '');
+            const [iaMessages, setIaMessages] = useState(JSON.parse(localStorage.getItem('atlas_ia')) || []);
+            const [agenda, setAgenda] = useState(JSON.parse(localStorage.getItem('atlas_agenda')) || { seg: [], ter: [], qua: [], qui: [], sex: [], sab: [], dom: [] });
+            const [materias, setMaterias] = useState(JSON.parse(localStorage.getItem('atlas_materias')) || []);
+            const [provas, setProvas] = useState(JSON.parse(localStorage.getItem('atlas_provas')) || []);
+            const [pdfs, setPdfs] = useState(JSON.parse(localStorage.getItem('atlas_pdfs')) || []);
+
+            useEffect(() => {
+                localStorage.setItem('atlas_api_key', apiKey);
+            }, [apiKey]);
+            useEffect(() => {
+                localStorage.setItem('atlas_ia', JSON.stringify(iaMessages));
+            }, [iaMessages]);
+            useEffect(() => {
+                localStorage.setItem('atlas_agenda', JSON.stringify(agenda));
+            }, [agenda]);
+            useEffect(() => {
+                localStorage.setItem('atlas_materias', JSON.stringify(materias));
+            }, [materias]);
+            useEffect(() => {
+                localStorage.setItem('atlas_provas', JSON.stringify(provas));
+            }, [provas]);
+            useEffect(() => {
+                localStorage.setItem('atlas_pdfs', JSON.stringify(pdfs));
+            }, [pdfs]);
+
+            const tabs = [
+                { id: 'ia', label: 'IA', icon: '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>' },
+                { id: 'agenda', label: 'Agenda', icon: '<svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>' },
+                { id: 'importar', label: 'Importar', icon: '<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>' },
+                { id: 'materias', label: 'Matérias', icon: '<svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>' },
+                { id: 'provas', label: 'Provas', icon: '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>' }
+            ];
+
+            const renderTabContent = () => {
+                switch (activeTab) {
+                    case 'ia':
+                        return <IaTab messages={iaMessages} setMessages={setIaMessages} apiKey={apiKey} />;
+                    case 'agenda':
+                        return <AgendaTab agenda={agenda} setAgenda={setAgenda} />;
+                    case 'importar':
+                        return <ImportarTab pdfs={pdfs} setPdfs={setPdfs} apiKey={apiKey} />;
+                    case 'materias':
+                        return <MateriasTab materias={materias} setMaterias={setMaterias} />;
+                    case 'provas':
+                        return <ProvasTab provas={provas} setProvas={setProvas} />;
+                    default:
+                        return null;
+                }
+            };
+
+            return (
+                <div className="container">
+                    <div className="logo">Atlas<span>So</span>Med</div>
+                    <div className="api-key">
+                        <input
+                            type="password"
+                            placeholder="Chave API Anthropic"
+                            value={apiKey}
+                            onChange={(e) => setApiKey(e.target.value)}
+                        />
+                    </div>
+                    <div className="nav">
+                        {tabs.map(tab => (
+                            <div
+                                key={tab.id}
+                                className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
+                                onClick={() => setActiveTab(tab.id)}
+                                dangerouslySetInnerHTML={{ __html: tab.icon + '<div>' + tab.label + '</div>' }}
+                            />
+                        ))}
+                    </div>
+                    <div className="tab-content">
+                        {renderTabContent()}
+                    </div>
+                </div>
+            );
+        }
+
+        function IaTab({ messages, setMessages, apiKey }) {
+            const [input, setInput] = useState('');
+            const [loading, setLoading] = useState(false);
+
+            useEffect(() => {
+                if (messages.length === 0 && apiKey) {
+                    // Briefing automático
+                    sendToAI('Olá, sou um estudante de medicina. Ajude-me com meu cronograma acadêmico.');
+                }
+            }, [apiKey]);
+
+            const sendToAI = async (message) => {
+                if (!apiKey) return alert('Configure a chave API Anthropic.');
+                setLoading(true);
+                try {
+                    const response = await fetch('https://api.anthropic.com/v1/messages', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-api-key': apiKey,
+                            'anthropic-version': '2023-06-01'
+                        },
+                        body: JSON.stringify({
+                            model: 'claude-sonnet-4-20250514',
+                            max_tokens: 1000,
+                            messages: [{ role: 'user', content: message }]
+                        })
+                    });
+                    const data = await response.json();
+                    const aiResponse = data.content[0].text;
+                    setMessages(prev => [...prev, { text: message, type: 'user' }, { text: aiResponse, type: 'ai' }]);
+                } catch (error) {
+                    alert('Erro na API: ' + error.message);
+                }
+                setLoading(false);
+            };
+
+            const sendMessage = () => {
+                if (input.trim()) {
+                    sendToAI(input);
+                    setInput('');
+                }
+            };
+
+            return (
+                <div>
+                    <h2>Assistente Acadêmico IA</h2>
+                    <div className="chat">
+                        {messages.map((msg, idx) => (
+                            <div key={idx} className={`message ${msg.type}`}>
+                                <strong>{msg.type === 'user' ? 'Você:' : 'IA:'}</strong> {msg.text}
+                            </div>
+                        ))}
+                    </div>
+                    <textarea
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="Digite sua pergunta..."
+                        disabled={loading}
+                    />
+                    <button onClick={sendMessage} disabled={loading}>{loading ? 'Enviando...' : 'Enviar'}</button>
+                </div>
+            );
+        }
+
+        function AgendaTab({ agenda, setAgenda }) {
+            const days = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
+            const [selectedDay, setSelectedDay] = useState('seg');
+            const [input, setInput] = useState('');
+
+            const addEvent = () => {
+                if (input.trim()) {
+                    setAgenda(prev => ({ ...prev, [selectedDay]: [...prev[selectedDay], input] }));
+                    setInput('');
+                }
+            };
+
+            const removeEvent = (day, idx) => {
+                setAgenda(prev => ({ ...prev, [day]: prev[day].filter((_, i) => i !== idx) }));
+            };
+
+            return (
+                <div>
+                    <h2>Agenda Semanal</h2>
+                    <select value={selectedDay} onChange={(e) => setSelectedDay(e.target.value)}>
+                        {days.map(day => <option key={day} value={day}>{day.toUpperCase()}</option>)}
+                    </select>
+                    <input
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="Adicionar aula ou tarefa..."
+                    />
+                    <button onClick={addEvent}>Adicionar</button>
+                    <div className="week">
+                        {days.map(day => (
+                            <div key={day} className="day">
+                                <h3>{day.toUpperCase()}</h3>
+                                <ul>
+                                    {agenda[day].map((event, idx) => (
+                                        <li key={idx}>
+                                            {event} <button onClick={() => removeEvent(day, idx)}>X</button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function ImportarTab({ pdfs, setPdfs, apiKey }) {
+            const [loading, setLoading] = useState(false);
+
+            const handleFile = async (e) => {
+                const file = e.target.files[0];
+                if (!file || (!file.type.includes('pdf') && !file.type.includes('image'))) return;
+                if (!apiKey) return alert('Configure a chave API Anthropic.');
+                setLoading(true);
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    const base64 = reader.result.split(',')[1];
+                    try {
+                        const response = await fetch('https://api.anthropic.com/v1/messages', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'x-api-key': apiKey,
+                                'anthropic-version': '2023-06-01',
+                                'anthropic-beta': 'pdfs-2024-09-25'
+                            },
+                            body: JSON.stringify({
+                                model: 'claude-sonnet-4-20250514',
+                                max_tokens: 1000,
+                                messages: [{
+                                    role: 'user',
+                                    content: [
+                                        { type: 'document', source: { type: 'base64', media_type: file.type, data: base64 } },
+                                        { type: 'text', text: 'Extraia informações relevantes em JSON.' }
+                                    ]
+                                }]
+                            })
+                        });
+                        const data = await response.json();
+                        const extracted = data.content[0].text;
+                        setPdfs(prev => [...prev, { name: file.name, extracted }]);
+                    } catch (error) {
+                        alert('Erro na API: ' + error.message);
+                    }
+                    setLoading(false);
+                };
+                reader.readAsDataURL(file);
+            };
+
+            const removePdf = (idx) => {
+                setPdfs(prev => prev.filter((_, i) => i !== idx));
+            };
+
+            return (
+                <div>
+                    <h2>Importar PDF/Imagem</h2>
+                    <input type="file" accept=".pdf,image/*" onChange={handleFile} disabled={loading} />
+                    {loading && <p>Processando...</p>}
+                    <ul>
+                        {pdfs.map((pdf, idx) => (
+                            <li key={idx}>
+                                {pdf.name}: {pdf.extracted} <button onClick={() => removePdf(idx)}>Remover</button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            );
+        }
+
+        function MateriasTab({ materias, setMaterias }) {
+            const [input, setInput] = useState('');
+
+            const addMateria = () => {
+                if (input.trim()) {
+                    setMaterias(prev => [...prev, { name: input, performance: 50 }]);
+                    setInput('');
+                }
+            };
+
+            const updatePerformance = (idx, value) => {
+                setMaterias(prev => prev.map((m, i) => i === idx ? { ...m, performance: value } : m));
+            };
+
+            const removeMateria = (idx) => {
+                setMaterias(prev => prev.filter((_, i) => i !== idx));
+            };
+
+            return (
+                <div>
+                    <h2>Matérias</h2>
+                    <input
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="Adicionar matéria..."
+                    />
+                    <button onClick={addMateria}>Adicionar</button>
+                    <ul>
+                        {materias.map((materia, idx) => (
+                            <li key={idx}>
+                                <div className="slider">
+                                    {materia.name}
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        value={materia.performance}
+                                        onChange={(e) => updatePerformance(idx, e.target.value)}
+                                    />
+                                    {materia.performance}%
+                                </div>
+                                <button onClick={() => removeMateria(idx)}>Remover</button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            );
+        }
+
+        function ProvasTab({ provas, setProvas }) {
+            const [input, setInput] = useState('');
+            const [date, setDate] = useState('');
+
+            const addProva = () => {
+                if (input.trim() && date) {
+                    setProvas(prev => [...prev, { name: input, date }]);
+                    setInput('');
+                    setDate('');
+                }
+            };
+
+            const removeProva = (idx) => {
+                setProvas(prev => prev.filter((_, i) => i !== idx));
+            };
+
+            const getCountdown = (dateStr) => {
+                const now = new Date();
+                const target = new Date(dateStr);
+                const diff = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+                return diff > 0 ? `${diff} dias` : 'Expirada';
+            };
+
+            return (
+                <div>
+                    <h2>Provas</h2>
+                    <input
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="Nome da prova..."
+                    />
+                    <input
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                    />
+                    <button onClick={addProva}>Adicionar</button>
+                    <ul>
+                        {provas.map((prova, idx) => (
+                            <li key={idx}>
+                                {prova.name} - {prova.date}
+                                <div className="countdown">Countdown: {getCountdown(prova.date)}</div>
+                                <button onClick={() => removeProva(idx)}>Remover</button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
