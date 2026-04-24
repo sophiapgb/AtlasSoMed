@@ -1,523 +1,888 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AtlasSoMed</title>
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;700&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.5/babel.min.js"></script>
-    <style>
-        :root {
-            --bg: #ffffff;
-            --surface: #f8f9fa;
-            --primary: #8b5cf6;
-            --text: #333333;
-            --text-secondary: #666666;
-        }
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: #1a1a1a;
-                --surface: #2a2a2a;
-                --text: #ffffff;
-                --text-secondary: #cccccc;
-            }
-        }
-        * {
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Nunito', sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .logo {
-            font-family: 'Sora', sans-serif;
-            font-size: 2em;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .logo span {
-            color: var(--primary);
-        }
-        .nav {
-            display: flex;
-            justify-content: space-around;
-            background-color: var(--surface);
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .nav-item {
-            cursor: pointer;
-            padding: 10px;
-            border-radius: 8px;
-            transition: background-color 0.3s;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: var(--text);
-        }
-        .nav-item.active {
-            background-color: var(--primary);
-            color: white;
-        }
-        .nav-item svg {
-            width: 24px;
-            height: 24px;
-            margin-bottom: 5px;
-        }
-        .tab-content {
-            background-color: var(--surface);
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        input, textarea, button, select {
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-family: inherit;
-        }
-        input, textarea {
-            width: 100%;
-        }
-        button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            opacity: 0.9;
-        }
-        ul {
-            list-style-type: none;
-            padding: 0;
-        }
-        li {
-            background-color: var(--bg);
-            margin: 5px 0;
-            padding: 10px;
-            border-radius: 4px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-        .chat {
-            height: 300px;
-            overflow-y: auto;
-            background-color: var(--bg);
-            padding: 10px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-            margin-bottom: 10px;
-        }
-        .message {
-            margin: 5px 0;
-        }
-        .user { text-align: right; }
-        .ai { text-align: left; }
-        .week {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 10px;
-        }
-        .day {
-            background-color: var(--bg);
-            padding: 10px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-        }
-        .slider {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .slider input {
-            flex: 1;
-        }
-        .countdown {
-            font-weight: bold;
-            color: var(--primary);
-        }
-        .api-key {
-            margin-bottom: 20px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>AtlasSoMed</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.5/babel.min.js"></script>
+  <style>
+  /* ══════════════════════════════════
+     VARIÁVEIS DE TEMA
+  ══════════════════════════════════ */
+  :root {
+    --bg:      #f4f2ff;
+    --surf:    #ffffff;
+    --surf2:   #ede9fe;
+    --prim:    #7c3aed;
+    --prim-m:  #8b5cf6;
+    --prim-l:  #a78bfa;
+    --grad:    linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+    --text:    #1e1b4b;
+    --text2:   #5b21b6;
+    --muted:   #9d84e8;
+    --border:  #ddd6fe;
+    --sh-sm:   0 2px 10px rgba(124,58,237,.09);
+    --sh:      0 4px 24px rgba(124,58,237,.13);
+    --r:       16px;
+    --r-sm:    10px;
+    --r-f:     9999px;
+    --nav:     76px;
+    --hdr:     60px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:    #09091a;
+      --surf:  #111123;
+      --surf2: #1a1a30;
+      --text:  #ede9fe;
+      --text2: #c4b5fd;
+      --muted: #6d5fa6;
+      --border:#2d2b50;
+      --sh-sm: 0 2px 10px rgba(0,0,0,.45);
+      --sh:    0 4px 24px rgba(0,0,0,.55);
+    }
+  }
+
+  /* ══════════════════════════════════
+     RESET & BASE
+  ══════════════════════════════════ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+  #root { height: 100%; display: flex; flex-direction: column; }
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--prim-l); border-radius: 2px; }
+
+  /* ══════════════════════════════════
+     LAYOUT
+  ══════════════════════════════════ */
+  .hdr {
+    height: var(--hdr);
+    background: var(--surf);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--sh-sm);
+    flex-shrink: 0; z-index: 10;
+  }
+  .logo {
+    font-family: 'Sora', sans-serif;
+    font-size: 1.45rem; font-weight: 700; letter-spacing: -.5px;
+    display: flex; align-items: center; gap: 2px;
+  }
+  .logo-gem {
+    width: 9px; height: 9px;
+    background: var(--grad);
+    border-radius: 3px; transform: rotate(45deg);
+    margin-right: 7px; flex-shrink: 0;
+  }
+  .logo-so {
+    background: var(--grad);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .main {
+    flex: 1; overflow-y: auto; overflow-x: hidden;
+    padding: 18px 14px calc(var(--nav) + 18px);
+  }
+  .page { max-width: 480px; margin: 0 auto; }
+
+  /* ══════════════════════════════════
+     NAV INFERIOR
+  ══════════════════════════════════ */
+  .bnav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: var(--nav);
+    background: var(--surf); border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-around;
+    padding: 0 6px 8px;
+    box-shadow: 0 -4px 20px rgba(124,58,237,.1);
+    z-index: 100;
+  }
+  .ni {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 7px 10px; border-radius: 12px;
+    cursor: pointer; border: none;
+    background: transparent; color: var(--muted);
+    font-family: 'Nunito', sans-serif;
+    transition: all .18s ease; min-width: 52px;
+  }
+  .ni:hover { background: var(--surf2); color: var(--prim); }
+  .ni.on    { background: var(--surf2); color: var(--prim); }
+  .ni svg   { width: 20px; height: 20px; transition: transform .18s ease; }
+  .ni.on svg { transform: scale(1.12); }
+  .ni-l { font-size: .6rem; font-weight: 800; letter-spacing: .3px; }
+
+  /* ══════════════════════════════════
+     CABEÇALHO DE PÁGINA
+  ══════════════════════════════════ */
+  .ph { margin-bottom: 18px; }
+  .ph-t { font-family: 'Sora', sans-serif; font-size: 1.3rem; font-weight: 700; margin-bottom: 3px; }
+  .ph-s { font-size: .8rem; color: var(--muted); }
+
+  /* ══════════════════════════════════
+     CARD
+  ══════════════════════════════════ */
+  .card {
+    background: var(--surf); border-radius: var(--r);
+    border: 1px solid var(--border); box-shadow: var(--sh);
+    padding: 18px; margin-bottom: 14px;
+  }
+  .card-t {
+    font-family: 'Sora', sans-serif;
+    font-size: .88rem; font-weight: 600; color: var(--text2);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .card-t svg { width: 16px; height: 16px; color: var(--prim); }
+
+  /* ══════════════════════════════════
+     FORMULÁRIOS
+  ══════════════════════════════════ */
+  .inp {
+    width: 100%; padding: 10px 13px;
+    border: 1.5px solid var(--border); border-radius: var(--r-sm);
+    background: var(--surf); color: var(--text);
+    font-family: 'Nunito', sans-serif; font-size: .87rem;
+    outline: none; transition: border-color .18s, box-shadow .18s;
+  }
+  .inp:focus {
+    border-color: var(--prim-m);
+    box-shadow: 0 0 0 3px rgba(124,58,237,.12);
+  }
+  .inp::placeholder { color: var(--muted); }
+  select.inp { cursor: pointer; }
+
+  .row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .row .inp { flex: 1; }
+  .col { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+
+  /* ══════════════════════════════════
+     BOTÕES
+  ══════════════════════════════════ */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px 18px; border: none; border-radius: var(--r-sm);
+    font-family: 'Nunito', sans-serif; font-size: .87rem; font-weight: 700;
+    cursor: pointer; transition: all .18s ease; white-space: nowrap;
+  }
+  .btn-p {
+    background: var(--grad); color: #fff;
+    box-shadow: 0 4px 14px rgba(124,58,237,.32);
+  }
+  .btn-p:hover { box-shadow: 0 6px 20px rgba(124,58,237,.44); transform: translateY(-1px); }
+  .btn-p:active { transform: none; }
+  .btn-g { background: transparent; color: var(--prim); border: 1.5px solid var(--border); }
+  .btn-g:hover { background: var(--surf2); }
+  .btn-d {
+    background: transparent; color: #ef4444;
+    border: 1.5px solid transparent; padding: 6px 9px; font-size: .78rem;
+  }
+  .btn-d:hover { background: #fee2e2; border-color: #fca5a5; }
+  @media (prefers-color-scheme: dark) { .btn-d:hover { background: #450a0a; } }
+  .btn-w { width: 100%; }
+  .btn-sm { padding: 7px 13px; font-size: .8rem; }
+
+  /* ══════════════════════════════════
+     PILLS / SELETOR DE DIA
+  ══════════════════════════════════ */
+  .pills {
+    display: flex; gap: 6px;
+    overflow-x: auto; padding-bottom: 2px; margin-bottom: 14px;
+    scrollbar-width: none;
+  }
+  .pills::-webkit-scrollbar { display: none; }
+  .pill {
+    padding: 7px 14px; border-radius: var(--r-f);
+    border: 1.5px solid var(--border);
+    background: var(--surf); color: var(--text2);
+    font-size: .77rem; font-weight: 800;
+    cursor: pointer; white-space: nowrap;
+    transition: all .18s ease; font-family: 'Nunito', sans-serif;
+  }
+  .pill.on {
+    background: var(--grad); color: #fff;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(124,58,237,.3);
+  }
+
+  /* ══════════════════════════════════
+     ITEM DE LISTA
+  ══════════════════════════════════ */
+  .item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px;
+    background: var(--surf); border-radius: var(--r-sm);
+    border: 1px solid var(--border); margin-bottom: 8px;
+    box-shadow: var(--sh-sm); transition: box-shadow .18s;
+  }
+  .item:hover { box-shadow: var(--sh); }
+  .item-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .item-main { flex: 1; min-width: 0; }
+  .item-title { font-size: .88rem; font-weight: 700; }
+  .item-sub   { font-size: .75rem; color: var(--muted); margin-top: 1px; }
+
+  /* ══════════════════════════════════
+     BARRA DE PROGRESSO
+  ══════════════════════════════════ */
+  .track {
+    height: 7px; background: var(--surf2);
+    border-radius: var(--r-f); overflow: hidden; margin: 8px 0;
+  }
+  .fill { height: 100%; border-radius: var(--r-f); transition: width .4s ease; }
+  input[type=range] { width: 100%; accent-color: var(--prim); cursor: pointer; }
+
+  /* ══════════════════════════════════
+     CARD DE MATÉRIA
+  ══════════════════════════════════ */
+  .mc {
+    background: var(--surf); border-radius: var(--r);
+    border: 1px solid var(--border); box-shadow: var(--sh-sm);
+    padding: 15px 16px; margin-bottom: 11px;
+    position: relative; overflow: hidden;
+  }
+  .mc-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .mc-inner { padding-left: 10px; }
+  .mc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+  .mc-name { font-family: 'Sora', sans-serif; font-weight: 600; font-size: .92rem; }
+  .mc-pct  { font-family: 'Sora', sans-serif; font-size: 1.15rem; font-weight: 700; }
+
+  /* ══════════════════════════════════
+     SELETOR DE COR
+  ══════════════════════════════════ */
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatch {
+    width: 26px; height: 26px; border-radius: 50%;
+    cursor: pointer; border: 2.5px solid transparent;
+    transition: all .18s ease; flex-shrink: 0;
+  }
+  .swatch.on { border-color: var(--text); transform: scale(1.18); }
+
+  /* ══════════════════════════════════
+     CARD DE PROVA
+  ══════════════════════════════════ */
+  .pc {
+    background: var(--surf); border-radius: var(--r);
+    border: 1px solid var(--border); box-shadow: var(--sh-sm);
+    padding: 15px 14px 15px 18px; margin-bottom: 11px;
+    display: flex; align-items: flex-start; justify-content: space-between;
+    position: relative; overflow: hidden; gap: 10px;
+  }
+  .pc-stripe { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .pc-name { font-family: 'Sora', sans-serif; font-weight: 600; font-size: .92rem; margin-bottom: 3px; }
+  .pc-info { font-size: .75rem; color: var(--muted); margin-bottom: 8px; }
+
+  /* badges de countdown */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: var(--r-f);
+    font-size: .73rem; font-weight: 800;
+  }
+  .badge svg { width: 11px; height: 11px; }
+  .b-g  { background: #d1fae5; color: #065f46; }
+  .b-t  { background: #cffafe; color: #0e7490; }
+  .b-y  { background: #fef3c7; color: #92400e; }
+  .b-r  { background: #fee2e2; color: #991b1b; }
+  .b-gr { background: var(--surf2); color: var(--muted); }
+  @media (prefers-color-scheme: dark) {
+    .b-g  { background: #064e3b; color: #6ee7b7; }
+    .b-t  { background: #0c4a6e; color: #7dd3fc; }
+    .b-y  { background: #78350f; color: #fcd34d; }
+    .b-r  { background: #7f1d1d; color: #fca5a5; }
+  }
+
+  /* ══════════════════════════════════
+     CARD DE PLANO
+  ══════════════════════════════════ */
+  .pi {
+    background: var(--surf); border-radius: var(--r-sm);
+    border: 1px solid var(--border); box-shadow: var(--sh-sm);
+    padding: 12px 14px; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .pi-hora {
+    font-family: 'Sora', sans-serif; font-weight: 700;
+    font-size: .82rem; color: var(--prim);
+    min-width: 42px; text-align: center;
+  }
+  .pi-sep { width: 1px; height: 32px; background: var(--border); flex-shrink: 0; }
+  .pi-body { flex: 1; min-width: 0; }
+  .pi-mat  { font-weight: 700; font-size: .87rem; }
+  .pi-top  { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+  .dur-tag {
+    font-size: .72rem; font-weight: 800; color: var(--prim-m);
+    background: var(--surf2); padding: 3px 8px; border-radius: var(--r-f);
+    white-space: nowrap;
+  }
+
+  /* ══════════════════════════════════
+     HOME / STATS
+  ══════════════════════════════════ */
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .stat {
+    background: var(--surf); border-radius: var(--r);
+    border: 1px solid var(--border); box-shadow: var(--sh-sm); padding: 16px;
+  }
+  .stat-n {
+    font-family: 'Sora', sans-serif; font-size: 1.8rem; font-weight: 700;
+    background: var(--grad); -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; background-clip: text; line-height: 1;
+  }
+  .stat-l { font-size: .75rem; color: var(--muted); margin-top: 4px; }
+  .today-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .today-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .today-hora { font-family: 'Sora', sans-serif; font-size: .8rem; font-weight: 700; color: var(--prim); min-width: 40px; }
+  .today-desc { font-size: .87rem; font-weight: 600; }
+
+  /* ══════════════════════════════════
+     ESTADO VAZIO
+  ══════════════════════════════════ */
+  .empty { text-align: center; padding: 30px 16px; color: var(--muted); }
+  .empty svg { width: 40px; height: 40px; margin: 0 auto 10px; opacity: .3; display: block; }
+  .empty-t { font-weight: 700; font-size: .88rem; margin-bottom: 3px; }
+  .empty-s { font-size: .77rem; }
+
+  /* ══════════════════════════════════
+     UTILITÁRIOS
+  ══════════════════════════════════ */
+  .f   { display: flex; }
+  .ac  { align-items: center; }
+  .jb  { justify-content: space-between; }
+  .g6  { gap: 6px; }
+  .g8  { gap: 8px; }
+  .mb10 { margin-bottom: 10px; }
+  .mb14 { margin-bottom: 14px; }
+  .mt8  { margin-top: 8px; }
+  .bold { font-weight: 700; }
+  .sm   { font-size: .8rem; }
+  .gt   { background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .fi   { animation: fi .22s ease; }
+  @keyframes fi { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+  </style>
 </head>
 <body>
-    <div id="root"></div>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+/* ── Helpers ─────────────────────────────────────── */
+const ls  = (k, fb) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } };
+const lss = (k, v)  => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const uid = () => Math.random().toString(36).slice(2, 9);
 
-        function App() {
-            const [activeTab, setActiveTab] = useState('ia');
-            const [apiKey, setApiKey] = useState(localStorage.getItem('atlas_api_key') || '');
-            const [iaMessages, setIaMessages] = useState(JSON.parse(localStorage.getItem('atlas_ia')) || []);
-            const [agenda, setAgenda] = useState(JSON.parse(localStorage.getItem('atlas_agenda')) || { seg: [], ter: [], qua: [], qui: [], sex: [], sab: [], dom: [] });
-            const [materias, setMaterias] = useState(JSON.parse(localStorage.getItem('atlas_materias')) || []);
-            const [provas, setProvas] = useState(JSON.parse(localStorage.getItem('atlas_provas')) || []);
-            const [pdfs, setPdfs] = useState(JSON.parse(localStorage.getItem('atlas_pdfs')) || []);
+const CORES = [
+  '#8b5cf6','#a855f7','#ec4899','#ef4444',
+  '#f59e0b','#10b981','#3b82f6','#06b6d4',
+  '#6366f1','#84cc16',
+];
 
-            useEffect(() => {
-                localStorage.setItem('atlas_api_key', apiKey);
-            }, [apiKey]);
-            useEffect(() => {
-                localStorage.setItem('atlas_ia', JSON.stringify(iaMessages));
-            }, [iaMessages]);
-            useEffect(() => {
-                localStorage.setItem('atlas_agenda', JSON.stringify(agenda));
-            }, [agenda]);
-            useEffect(() => {
-                localStorage.setItem('atlas_materias', JSON.stringify(materias));
-            }, [materias]);
-            useEffect(() => {
-                localStorage.setItem('atlas_provas', JSON.stringify(provas));
-            }, [provas]);
-            useEffect(() => {
-                localStorage.setItem('atlas_pdfs', JSON.stringify(pdfs));
-            }, [pdfs]);
+const DIAS = [
+  { k:'seg', l:'SEG', ext:'Segunda'  },
+  { k:'ter', l:'TER', ext:'Terça'    },
+  { k:'qua', l:'QUA', ext:'Quarta'   },
+  { k:'qui', l:'QUI', ext:'Quinta'   },
+  { k:'sex', l:'SEX', ext:'Sexta'    },
+  { k:'sab', l:'SÁB', ext:'Sábado'   },
+  { k:'dom', l:'DOM', ext:'Domingo'  },
+];
+const AGENDA_VAZIA = { seg:[], ter:[], qua:[], qui:[], sex:[], sab:[], dom:[] };
+const JS2KEY = ['dom','seg','ter','qua','qui','sex','sab'];
+const hojek  = () => JS2KEY[new Date().getDay()];
 
-            const tabs = [
-                { id: 'ia', label: 'IA', icon: '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>' },
-                { id: 'agenda', label: 'Agenda', icon: '<svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>' },
-                { id: 'importar', label: 'Importar', icon: '<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>' },
-                { id: 'materias', label: 'Matérias', icon: '<svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>' },
-                { id: 'provas', label: 'Provas', icon: '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>' }
-            ];
+function countdown(dataStr) {
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const alvo  = new Date(dataStr + 'T00:00:00');
+  const diff  = Math.round((alvo - hoje) / 86400000);
+  if (diff <  0)  return { lbl:'Expirada',     cls:'b-gr', cor:'#9ca3af' };
+  if (diff === 0) return { lbl:'Hoje!',         cls:'b-r',  cor:'#ef4444' };
+  if (diff <=  3) return { lbl:`${diff}d`,      cls:'b-r',  cor:'#ef4444' };
+  if (diff <=  7) return { lbl:`${diff} dias`,  cls:'b-y',  cor:'#f59e0b' };
+  if (diff <= 14) return { lbl:`${diff} dias`,  cls:'b-t',  cor:'#06b6d4' };
+  return               { lbl:`${diff} dias`,  cls:'b-g',  cor:'#10b981' };
+}
 
-            const renderTabContent = () => {
-                switch (activeTab) {
-                    case 'ia':
-                        return <IaTab messages={iaMessages} setMessages={setIaMessages} apiKey={apiKey} />;
-                    case 'agenda':
-                        return <AgendaTab agenda={agenda} setAgenda={setAgenda} />;
-                    case 'importar':
-                        return <ImportarTab pdfs={pdfs} setPdfs={setPdfs} apiKey={apiKey} />;
-                    case 'materias':
-                        return <MateriasTab materias={materias} setMaterias={setMaterias} />;
-                    case 'provas':
-                        return <ProvasTab provas={provas} setProvas={setProvas} />;
-                    default:
-                        return null;
-                }
-            };
+function perfGrad(p) {
+  if (p < 40) return 'linear-gradient(135deg,#ef4444,#f87171)';
+  if (p < 70) return 'linear-gradient(135deg,#f59e0b,#fbbf24)';
+  return            'linear-gradient(135deg,#10b981,#34d399)';
+}
 
-            return (
-                <div className="container">
-                    <div className="logo">Atlas<span>So</span>Med</div>
-                    <div className="api-key">
-                        <input
-                            type="password"
-                            placeholder="Chave API Anthropic"
-                            value={apiKey}
-                            onChange={(e) => setApiKey(e.target.value)}
-                        />
-                    </div>
-                    <div className="nav">
-                        {tabs.map(tab => (
-                            <div
-                                key={tab.id}
-                                className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
-                                onClick={() => setActiveTab(tab.id)}
-                                dangerouslySetInnerHTML={{ __html: tab.icon + '<div>' + tab.label + '</div>' }}
-                            />
-                        ))}
-                    </div>
-                    <div className="tab-content">
-                        {renderTabContent()}
-                    </div>
-                </div>
-            );
+/* ── Ícones SVG ──────────────────────────────────── */
+const IcoHome = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    <polyline points="9 22 9 12 15 12 15 22"/>
+  </svg>
+);
+const IcoCal = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="18" height="18" x="3" y="4" rx="2"/>
+    <line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/>
+    <line x1="3" x2="21" y1="10" y2="10"/>
+    <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
+  </svg>
+);
+const IcoBook = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+  </svg>
+);
+const IcoClip = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="8" height="4" x="8" y="2" rx="1"/>
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+    <path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/>
+  </svg>
+);
+const IcoCheck = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+  </svg>
+);
+const IcoPlus = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+    <line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>
+  </svg>
+);
+const IcoTrash = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="m19 6-.867 12.142A2 2 0 0 1 16.138 20H7.862a2 2 0 0 1-1.995-1.858L5 6m5 0V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2"/>
+  </svg>
+);
+const IcoClock = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+  </svg>
+);
+
+/* ══════════════════════════════════════════════════
+   ABA: INÍCIO
+══════════════════════════════════════════════════ */
+function TabInicio({ agenda, materias, provas }) {
+  const hk = hojek();
+  const diaHoje    = DIAS.find(d => d.k === hk);
+  const aulasHoje  = [...(agenda[hk] || [])].sort((a,b) => a.hora.localeCompare(b.hora));
+  const proxProvas = [...provas]
+    .filter(p => { const d = new Date(p.data+'T00:00:00'), h = new Date(); h.setHours(0,0,0,0); return d >= h; })
+    .sort((a,b) => a.data.localeCompare(b.data))
+    .slice(0, 3);
+  const mediaPerf = materias.length
+    ? Math.round(materias.reduce((s,m) => s + m.perf, 0) / materias.length)
+    : 0;
+  const dataFmt = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+
+  return (
+    <div>
+      <div className="ph">
+        <div className="ph-t">Olá! 👋</div>
+        <div className="ph-s">{diaHoje?.ext} · {dataFmt}</div>
+      </div>
+
+      <div className="stats">
+        <div className="stat fi">
+          <div className="stat-n">{materias.length}</div>
+          <div className="stat-l">Matérias</div>
+        </div>
+        <div className="stat fi">
+          <div className="stat-n">{provas.length}</div>
+          <div className="stat-l">Provas</div>
+        </div>
+        <div className="stat fi">
+          <div className="stat-n">{mediaPerf}%</div>
+          <div className="stat-l">Média geral</div>
+        </div>
+        <div className="stat fi">
+          <div className="stat-n">{aulasHoje.length}</div>
+          <div className="stat-l">Aulas hoje</div>
+        </div>
+      </div>
+
+      <div className="card fi">
+        <div className="card-t"><IcoCal/> Hoje — {diaHoje?.ext}</div>
+        {aulasHoje.length === 0
+          ? <div style={{fontSize:'.82rem',color:'var(--muted)',textAlign:'center',padding:'8px 0'}}>Nenhuma aula para hoje</div>
+          : aulasHoje.map((a,i) => (
+            <div key={i} className="today-row">
+              <div className="today-hora">{a.hora}</div>
+              <div className="today-desc">{a.desc}</div>
+            </div>
+          ))
         }
+      </div>
 
-        function IaTab({ messages, setMessages, apiKey }) {
-            const [input, setInput] = useState('');
-            const [loading, setLoading] = useState(false);
-
-            useEffect(() => {
-                if (messages.length === 0 && apiKey) {
-                    // Briefing automático
-                    sendToAI('Olá, sou um estudante de medicina. Ajude-me com meu cronograma acadêmico.');
-                }
-            }, [apiKey]);
-
-            const sendToAI = async (message) => {
-                if (!apiKey) return alert('Configure a chave API Anthropic.');
-                setLoading(true);
-                try {
-                    const response = await fetch('https://api.anthropic.com/v1/messages', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'x-api-key': apiKey,
-                            'anthropic-version': '2023-06-01'
-                        },
-                        body: JSON.stringify({
-                            model: 'claude-sonnet-4-20250514',
-                            max_tokens: 1000,
-                            messages: [{ role: 'user', content: message }]
-                        })
-                    });
-                    const data = await response.json();
-                    const aiResponse = data.content[0].text;
-                    setMessages(prev => [...prev, { text: message, type: 'user' }, { text: aiResponse, type: 'ai' }]);
-                } catch (error) {
-                    alert('Erro na API: ' + error.message);
-                }
-                setLoading(false);
-            };
-
-            const sendMessage = () => {
-                if (input.trim()) {
-                    sendToAI(input);
-                    setInput('');
-                }
-            };
-
+      {proxProvas.length > 0 && (
+        <div className="card fi">
+          <div className="card-t"><IcoClock/> Próximas Provas</div>
+          {proxProvas.map((p,i) => {
+            const cd = countdown(p.data);
+            const isLast = i === proxProvas.length - 1;
             return (
+              <div key={p.id} className="f ac jb"
+                style={{paddingBottom: isLast?0:12, marginBottom: isLast?0:12,
+                        borderBottom: isLast?'none':'1px solid var(--border)'}}>
                 <div>
-                    <h2>Assistente Acadêmico IA</h2>
-                    <div className="chat">
-                        {messages.map((msg, idx) => (
-                            <div key={idx} className={`message ${msg.type}`}>
-                                <strong>{msg.type === 'user' ? 'Você:' : 'IA:'}</strong> {msg.text}
-                            </div>
-                        ))}
-                    </div>
-                    <textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        placeholder="Digite sua pergunta..."
-                        disabled={loading}
-                    />
-                    <button onClick={sendMessage} disabled={loading}>{loading ? 'Enviando...' : 'Enviar'}</button>
+                  <div className="bold" style={{fontSize:'.88rem'}}>{p.nome}</div>
+                  {p.materia && <div className="sm" style={{color:'var(--muted)'}}>{p.materia}</div>}
                 </div>
+                <span className={`badge ${cd.cls}`}><IcoClock/>{cd.lbl}</span>
+              </div>
             );
-        }
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
-        function AgendaTab({ agenda, setAgenda }) {
-            const days = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
-            const [selectedDay, setSelectedDay] = useState('seg');
-            const [input, setInput] = useState('');
+/* ══════════════════════════════════════════════════
+   ABA: AGENDA
+══════════════════════════════════════════════════ */
+function TabAgenda({ agenda, setAgenda }) {
+  const [dia,  setDia]  = useState(hojek);
+  const [hora, setHora] = useState('');
+  const [desc, setDesc] = useState('');
 
-            const addEvent = () => {
-                if (input.trim()) {
-                    setAgenda(prev => ({ ...prev, [selectedDay]: [...prev[selectedDay], input] }));
-                    setInput('');
-                }
-            };
+  const salvar = (novo) => { setAgenda(novo); lss('atlas_agenda', novo); };
+  const add = () => {
+    if (!hora || !desc.trim()) return;
+    salvar({ ...agenda, [dia]: [...agenda[dia], { id:uid(), hora, desc:desc.trim() }] });
+    setDesc('');
+  };
+  const del = (id) => salvar({ ...agenda, [dia]: agenda[dia].filter(e => e.id !== id) });
 
-            const removeEvent = (day, idx) => {
-                setAgenda(prev => ({ ...prev, [day]: prev[day].filter((_, i) => i !== idx) }));
-            };
+  const eventos = [...(agenda[dia] || [])].sort((a,b) => a.hora.localeCompare(b.hora));
 
-            return (
-                <div>
-                    <h2>Agenda Semanal</h2>
-                    <select value={selectedDay} onChange={(e) => setSelectedDay(e.target.value)}>
-                        {days.map(day => <option key={day} value={day}>{day.toUpperCase()}</option>)}
-                    </select>
-                    <input
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        placeholder="Adicionar aula ou tarefa..."
-                    />
-                    <button onClick={addEvent}>Adicionar</button>
-                    <div className="week">
-                        {days.map(day => (
-                            <div key={day} className="day">
-                                <h3>{day.toUpperCase()}</h3>
-                                <ul>
-                                    {agenda[day].map((event, idx) => (
-                                        <li key={idx}>
-                                            {event} <button onClick={() => removeEvent(day, idx)}>X</button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        ))}
-                    </div>
+  return (
+    <div>
+      <div className="ph">
+        <div className="ph-t">Agenda Semanal</div>
+        <div className="ph-s">Aulas e compromissos fixos por dia</div>
+      </div>
+
+      <div className="pills">
+        {DIAS.map(d => (
+          <button key={d.k} className={`pill ${dia===d.k?'on':''}`} onClick={()=>setDia(d.k)}>{d.l}</button>
+        ))}
+      </div>
+
+      <div className="card">
+        <div className="card-t"><IcoCal/> Adicionar Aula</div>
+        <div className="row">
+          <input className="inp" type="time" value={hora} onChange={e=>setHora(e.target.value)} style={{flex:'0 0 112px'}}/>
+          <input className="inp" value={desc} onChange={e=>setDesc(e.target.value)}
+            onKeyDown={e=>e.key==='Enter'&&add()} placeholder="Ex: Anatomia — Sala 3"/>
+        </div>
+        <button className="btn btn-p btn-w btn-sm" onClick={add}><IcoPlus/> Adicionar</button>
+      </div>
+
+      {eventos.length === 0
+        ? <div className="empty fi"><IcoCal/><div className="empty-t">Sem aulas</div><div className="empty-s">Adicione aulas para {DIAS.find(d=>d.k===dia)?.ext}</div></div>
+        : eventos.map(ev => (
+          <div key={ev.id} className="item fi">
+            <div className="item-dot" style={{background:'var(--grad)'}}/>
+            <div className="item-main">
+              <div className="item-title">{ev.desc}</div>
+              <div className="item-sub">{ev.hora}</div>
+            </div>
+            <button className="btn btn-d btn-sm" onClick={()=>del(ev.id)}><IcoTrash/></button>
+          </div>
+        ))
+      }
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════
+   ABA: MATÉRIAS
+══════════════════════════════════════════════════ */
+function TabMaterias({ materias, setMaterias }) {
+  const [nome, setNome] = useState('');
+  const [cor,  setCor]  = useState(CORES[0]);
+
+  const salvar = (list) => { setMaterias(list); lss('atlas_mat', list); };
+  const add = () => {
+    if (!nome.trim()) return;
+    salvar([...materias, { id:uid(), nome:nome.trim(), cor, perf:50 }]);
+    setNome('');
+  };
+  const del  = (id)       => salvar(materias.filter(m => m.id !== id));
+  const upd  = (id, perf) => salvar(materias.map(m => m.id===id ? {...m, perf:+perf} : m));
+
+  return (
+    <div>
+      <div className="ph">
+        <div className="ph-t">Matérias</div>
+        <div className="ph-s">Registre desempenho em cada disciplina</div>
+      </div>
+
+      <div className="card">
+        <div className="card-t"><IcoBook/> Nova Matéria</div>
+        <div className="col">
+          <input className="inp" value={nome} onChange={e=>setNome(e.target.value)}
+            onKeyDown={e=>e.key==='Enter'&&add()} placeholder="Nome da disciplina…"/>
+          <div className="f ac g8">
+            <span className="sm" style={{color:'var(--muted)',whiteSpace:'nowrap'}}>Cor:</span>
+            <div className="swatches">
+              {CORES.map(c => (
+                <div key={c} className={`swatch ${cor===c?'on':''}`}
+                  style={{background:c}} onClick={()=>setCor(c)}/>
+              ))}
+            </div>
+          </div>
+        </div>
+        <button className="btn btn-p btn-w btn-sm" onClick={add}><IcoPlus/> Adicionar</button>
+      </div>
+
+      {materias.length === 0
+        ? <div className="empty fi"><IcoBook/><div className="empty-t">Nenhuma matéria</div><div className="empty-s">Adicione sua primeira disciplina</div></div>
+        : materias.map(m => (
+          <div key={m.id} className="mc fi">
+            <div className="mc-bar" style={{background:m.cor}}/>
+            <div className="mc-inner">
+              <div className="mc-top">
+                <div className="mc-name">{m.nome}</div>
+                <div className="f ac g6">
+                  <div className="mc-pct" style={{color:m.cor}}>{m.perf}%</div>
+                  <button className="btn btn-d btn-sm" onClick={()=>del(m.id)}><IcoTrash/></button>
                 </div>
-            );
-        }
+              </div>
+              <div className="track">
+                <div className="fill" style={{width:m.perf+'%', background:perfGrad(m.perf)}}/>
+              </div>
+              <input type="range" min="0" max="100" value={m.perf}
+                style={{accentColor:m.cor}}
+                onChange={e=>upd(m.id, e.target.value)}/>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  );
+}
 
-        function ImportarTab({ pdfs, setPdfs, apiKey }) {
-            const [loading, setLoading] = useState(false);
+/* ══════════════════════════════════════════════════
+   ABA: PROVAS
+══════════════════════════════════════════════════ */
+function TabProvas({ provas, setProvas, materias }) {
+  const [nome, setNome] = useState('');
+  const [mat,  setMat]  = useState('');
+  const [data, setData] = useState('');
 
-            const handleFile = async (e) => {
-                const file = e.target.files[0];
-                if (!file || (!file.type.includes('pdf') && !file.type.includes('image'))) return;
-                if (!apiKey) return alert('Configure a chave API Anthropic.');
-                setLoading(true);
-                const reader = new FileReader();
-                reader.onload = async () => {
-                    const base64 = reader.result.split(',')[1];
-                    try {
-                        const response = await fetch('https://api.anthropic.com/v1/messages', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'x-api-key': apiKey,
-                                'anthropic-version': '2023-06-01',
-                                'anthropic-beta': 'pdfs-2024-09-25'
-                            },
-                            body: JSON.stringify({
-                                model: 'claude-sonnet-4-20250514',
-                                max_tokens: 1000,
-                                messages: [{
-                                    role: 'user',
-                                    content: [
-                                        { type: 'document', source: { type: 'base64', media_type: file.type, data: base64 } },
-                                        { type: 'text', text: 'Extraia informações relevantes em JSON.' }
-                                    ]
-                                }]
-                            })
-                        });
-                        const data = await response.json();
-                        const extracted = data.content[0].text;
-                        setPdfs(prev => [...prev, { name: file.name, extracted }]);
-                    } catch (error) {
-                        alert('Erro na API: ' + error.message);
-                    }
-                    setLoading(false);
-                };
-                reader.readAsDataURL(file);
-            };
+  const salvar = (list) => { setProvas(list); lss('atlas_pro', list); };
+  const add = () => {
+    if (!nome.trim() || !data) return;
+    salvar([...provas, { id:uid(), nome:nome.trim(), materia:mat, data }]);
+    setNome(''); setMat(''); setData('');
+  };
+  const del = (id) => salvar(provas.filter(p => p.id !== id));
 
-            const removePdf = (idx) => {
-                setPdfs(prev => prev.filter((_, i) => i !== idx));
-            };
+  const sorted = [...provas].sort((a,b) => a.data.localeCompare(b.data));
 
-            return (
-                <div>
-                    <h2>Importar PDF/Imagem</h2>
-                    <input type="file" accept=".pdf,image/*" onChange={handleFile} disabled={loading} />
-                    {loading && <p>Processando...</p>}
-                    <ul>
-                        {pdfs.map((pdf, idx) => (
-                            <li key={idx}>
-                                {pdf.name}: {pdf.extracted} <button onClick={() => removePdf(idx)}>Remover</button>
-                            </li>
-                        ))}
-                    </ul>
+  return (
+    <div>
+      <div className="ph">
+        <div className="ph-t">Provas</div>
+        <div className="ph-s">Acompanhe os prazos das avaliações</div>
+      </div>
+
+      <div className="card">
+        <div className="card-t"><IcoClip/> Nova Prova</div>
+        <div className="col">
+          <input className="inp" value={nome} onChange={e=>setNome(e.target.value)}
+            placeholder="Nome da prova…"/>
+          <select className="inp" value={mat} onChange={e=>setMat(e.target.value)}>
+            <option value="">— Matéria (opcional) —</option>
+            {materias.map(m => <option key={m.id} value={m.nome}>{m.nome}</option>)}
+          </select>
+          <input className="inp" type="date" value={data} onChange={e=>setData(e.target.value)}/>
+        </div>
+        <button className="btn btn-p btn-w btn-sm" onClick={add}><IcoPlus/> Adicionar</button>
+      </div>
+
+      {sorted.length === 0
+        ? <div className="empty fi"><IcoClip/><div className="empty-t">Nenhuma prova</div><div className="empty-s">Cadastre avaliações para acompanhar os prazos</div></div>
+        : sorted.map(p => {
+          const cd = countdown(p.data);
+          const fmtData = new Date(p.data+'T00:00:00')
+            .toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+          return (
+            <div key={p.id} className="pc fi">
+              <div className="pc-stripe" style={{background:cd.cor}}/>
+              <div style={{flex:1}}>
+                <div className="pc-name">{p.nome}</div>
+                <div className="pc-info">
+                  {p.materia ? `${p.materia} · ` : ''}{fmtData}
                 </div>
-            );
-        }
+                <span className={`badge ${cd.cls}`}><IcoClock/>{cd.lbl}</span>
+              </div>
+              <button className="btn btn-d btn-sm" style={{flexShrink:0,alignSelf:'flex-start'}}
+                onClick={()=>del(p.id)}><IcoTrash/></button>
+            </div>
+          );
+        })
+      }
+    </div>
+  );
+}
 
-        function MateriasTab({ materias, setMaterias }) {
-            const [input, setInput] = useState('');
+/* ══════════════════════════════════════════════════
+   ABA: PLANO DE ESTUDOS
+══════════════════════════════════════════════════ */
+function TabPlano({ plano, setPlano, materias }) {
+  const [dia,    setDia]    = useState(hojek);
+  const [hora,   setHora]   = useState('');
+  const [mat,    setMat]    = useState('');
+  const [topico, setTopico] = useState('');
+  const [dur,    setDur]    = useState('60');
 
-            const addMateria = () => {
-                if (input.trim()) {
-                    setMaterias(prev => [...prev, { name: input, performance: 50 }]);
-                    setInput('');
-                }
-            };
+  const DURS = ['30','45','60','90','120'];
 
-            const updatePerformance = (idx, value) => {
-                setMaterias(prev => prev.map((m, i) => i === idx ? { ...m, performance: value } : m));
-            };
+  const salvar = (list) => { setPlano(list); lss('atlas_plano', list); };
+  const add = () => {
+    if (!hora || !mat || !topico.trim()) return;
+    salvar([...plano, { id:uid(), dia, hora, materia:mat, topico:topico.trim(), dur:+dur }]);
+    setHora(''); setTopico('');
+  };
+  const del = (id) => salvar(plano.filter(p => p.id !== id));
 
-            const removeMateria = (idx) => {
-                setMaterias(prev => prev.filter((_, i) => i !== idx));
-            };
+  const itens = [...plano.filter(p => p.dia === dia)].sort((a,b) => a.hora.localeCompare(b.hora));
+  const totalMin = itens.reduce((s,p) => s + p.dur, 0);
+  const corMat = (nome) => materias.find(m => m.nome === nome)?.cor || 'var(--prim)';
+  const fmtHoras = (min) => min >= 60 ? `${Math.floor(min/60)}h${min%60?` ${min%60}min`:''}` : `${min}min`;
 
-            return (
-                <div>
-                    <h2>Matérias</h2>
-                    <input
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        placeholder="Adicionar matéria..."
-                    />
-                    <button onClick={addMateria}>Adicionar</button>
-                    <ul>
-                        {materias.map((materia, idx) => (
-                            <li key={idx}>
-                                <div className="slider">
-                                    {materia.name}
-                                    <input
-                                        type="range"
-                                        min="0"
-                                        max="100"
-                                        value={materia.performance}
-                                        onChange={(e) => updatePerformance(idx, e.target.value)}
-                                    />
-                                    {materia.performance}%
-                                </div>
-                                <button onClick={() => removeMateria(idx)}>Remover</button>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            );
-        }
+  return (
+    <div>
+      <div className="ph">
+        <div className="ph-t">Plano de Estudos</div>
+        <div className="ph-s">Monte blocos de estudo para cada dia</div>
+      </div>
 
-        function ProvasTab({ provas, setProvas }) {
-            const [input, setInput] = useState('');
-            const [date, setDate] = useState('');
+      <div className="pills">
+        {DIAS.map(d => (
+          <button key={d.k} className={`pill ${dia===d.k?'on':''}`} onClick={()=>setDia(d.k)}>{d.l}</button>
+        ))}
+      </div>
 
-            const addProva = () => {
-                if (input.trim() && date) {
-                    setProvas(prev => [...prev, { name: input, date }]);
-                    setInput('');
-                    setDate('');
-                }
-            };
+      <div className="card">
+        <div className="card-t"><IcoPlus/> Novo Bloco</div>
+        <div className="col">
+          <div className="row" style={{marginBottom:0}}>
+            <input className="inp" type="time" value={hora} onChange={e=>setHora(e.target.value)} style={{flex:'0 0 112px'}}/>
+            <select className="inp" value={mat} onChange={e=>setMat(e.target.value)}>
+              <option value="">— Matéria —</option>
+              {materias.map(m => <option key={m.id} value={m.nome}>{m.nome}</option>)}
+            </select>
+          </div>
+          <input className="inp" value={topico} onChange={e=>setTopico(e.target.value)}
+            onKeyDown={e=>e.key==='Enter'&&add()} placeholder="Tópico a estudar…"/>
+          <div className="f ac g6 mt8" style={{flexWrap:'wrap'}}>
+            <span className="sm" style={{color:'var(--muted)',marginRight:2}}>Duração:</span>
+            {DURS.map(v => (
+              <button key={v} className={`btn btn-sm ${dur===v?'btn-p':'btn-g'}`}
+                style={{padding:'5px 10px',fontSize:'.75rem'}}
+                onClick={()=>setDur(v)}>{v}min</button>
+            ))}
+          </div>
+        </div>
+        <button className="btn btn-p btn-w btn-sm" onClick={add}><IcoPlus/> Adicionar Bloco</button>
+      </div>
 
-            const removeProva = (idx) => {
-                setProvas(prev => prev.filter((_, i) => i !== idx));
-            };
+      {itens.length > 0 && (
+        <div className="f ac jb mb10">
+          <span className="sm bold">{DIAS.find(d=>d.k===dia)?.ext}</span>
+          <span className="sm bold gt">{fmtHoras(totalMin)} de estudo</span>
+        </div>
+      )}
 
-            const getCountdown = (dateStr) => {
-                const now = new Date();
-                const target = new Date(dateStr);
-                const diff = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
-                return diff > 0 ? `${diff} dias` : 'Expirada';
-            };
+      {itens.length === 0
+        ? <div className="empty fi"><IcoCheck/><div className="empty-t">Sem blocos</div><div className="empty-s">Planeje seus estudos para {DIAS.find(d=>d.k===dia)?.ext}</div></div>
+        : itens.map(p => (
+          <div key={p.id} className="pi fi">
+            <div className="pi-hora">{p.hora}</div>
+            <div className="pi-sep"/>
+            <div className="pi-body">
+              <div className="pi-mat" style={{color:corMat(p.materia)}}>{p.materia}</div>
+              <div className="pi-top">{p.topico}</div>
+            </div>
+            <span className="dur-tag">{p.dur}min</span>
+            <button className="btn btn-d btn-sm" onClick={()=>del(p.id)}><IcoTrash/></button>
+          </div>
+        ))
+      }
+    </div>
+  );
+}
 
-            return (
-                <div>
-                    <h2>Provas</h2>
-                    <input
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        placeholder="Nome da prova..."
-                    />
-                    <input
-                        type="date"
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                    />
-                    <button onClick={addProva}>Adicionar</button>
-                    <ul>
-                        {provas.map((prova, idx) => (
-                            <li key={idx}>
-                                {prova.name} - {prova.date}
-                                <div className="countdown">Countdown: {getCountdown(prova.date)}</div>
-                                <button onClick={() => removeProva(idx)}>Remover</button>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            );
-        }
+/* ══════════════════════════════════════════════════
+   APP ROOT
+══════════════════════════════════════════════════ */
+function App() {
+  const [aba,      setAba]     = useState('inicio');
+  const [agenda,   setAgenda]  = useState(() => { const v=ls('atlas_agenda',null); return v||{...AGENDA_VAZIA}; });
+  const [materias, setMat]     = useState(() => ls('atlas_mat',   []));
+  const [provas,   setPro]     = useState(() => ls('atlas_pro',   []));
+  const [plano,    setPlan]    = useState(() => ls('atlas_plano', []));
 
-        ReactDOM.render(<App />, document.getElementById('root'));
-    </script>
+  const ABAS = [
+    { id:'inicio',   lbl:'Início',   Ico: IcoHome  },
+    { id:'agenda',   lbl:'Agenda',   Ico: IcoCal   },
+    { id:'materias', lbl:'Matérias', Ico: IcoBook  },
+    { id:'provas',   lbl:'Provas',   Ico: IcoClip  },
+    { id:'plano',    lbl:'Plano',    Ico: IcoCheck },
+  ];
+
+  const conteudo = (() => {
+    switch (aba) {
+      case 'inicio':   return <TabInicio   agenda={agenda} materias={materias} provas={provas}/>;
+      case 'agenda':   return <TabAgenda   agenda={agenda} setAgenda={setAgenda}/>;
+      case 'materias': return <TabMaterias materias={materias} setMaterias={setMat}/>;
+      case 'provas':   return <TabProvas   provas={provas} setProvas={setPro} materias={materias}/>;
+      case 'plano':    return <TabPlano    plano={plano} setPlano={setPlan} materias={materias}/>;
+      default:         return null;
+    }
+  })();
+
+  return (
+    <>
+      <header className="hdr">
+        <div className="logo">
+          <div className="logo-gem"/>
+          <span>Atlas</span><span className="logo-so">So</span><span>Med</span>
+        </div>
+      </header>
+
+      <main className="main">
+        <div className="page">{conteudo}</div>
+      </main>
+
+      <nav className="bnav">
+        {ABAS.map(({ id, lbl, Ico }) => (
+          <button key={id} className={`ni ${aba===id?'on':''}`} onClick={()=>setAba(id)}>
+            <Ico/><span className="ni-l">{lbl}</span>
+          </button>
+        ))}
+      </nav>
+    </>
+  );
+}
+
+ReactDOM.render(<App/>, document.getElementById('root'));
+</script>
 </body>
 </html>
