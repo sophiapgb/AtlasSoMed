@@ -1223,13 +1223,16 @@ function ModalConfig({ apiKey, setApiKey, onClose }) {
 function TabImportar({ apiKey, agenda, setAgenda, materias, setMaterias, cronograma, setCronograma }) {
   const [loadingGrade,  setLoadingGrade]  = useState(false);
   const [loadingEmenta, setLoadingEmenta] = useState(false);
-  const [status,        setStatus]        = useState(''); // 'ok:msg' | 'err:msg'
-  const [previewGrade,  setPreviewGrade]  = useState(null); // {aulas, corMap, fileName} | null
-  const [previewEmenta, setPreviewEmenta] = useState(null); // [{subject,professor,topics,examDates,fileName}] | null
+  const [loadingCron,   setLoadingCron]   = useState(false);
+  const [status,        setStatus]        = useState('');
+  const [previewGrade,  setPreviewGrade]  = useState(null);
+  const [previewEmenta, setPreviewEmenta] = useState(null);
+  const [previewCron,   setPreviewCron]   = useState(null); // {aulas, fileName} | null
   const [arquivos,      setArquivos]      = useState(() => ls('atlas_arquivos', []));
 
   const gradeRef  = useRef(null);
   const ementaRef = useRef(null);
+  const cronRef   = useRef(null);
 
   const saveArquivos = (list) => { setArquivos(list); lss('atlas_arquivos', list); };
 
@@ -1358,6 +1361,47 @@ type: expositiva | pratica | especial. requiresJaleco true se o local for hospit
     saveArquivos([...arquivos, ...previewEmenta.map(em => ({ id:uid(), nome:em.fileName, tipo:'ementa' }))]);
     setStatus(`ok:${previewEmenta.length} ementa(s) importada(s).`);
     setPreviewEmenta(null);
+  };
+
+  /* ── Upload cronograma → prévia ── */
+  const uploadCron = async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!apiKey.trim()) { setStatus('err:Configure a chave API primeiro.'); return; }
+    setLoadingCron(true); setStatus('');
+    try {
+      const b64   = await toBase64(file);
+      const isPdf = file.type === 'application/pdf';
+      const src   = { type: 'base64', media_type: file.type, data: b64 };
+      const data  = await callAPI([{ role:'user', content:[
+        isPdf ? { type:'document', source:src } : { type:'image', source:src },
+        { type:'text', text:
+`Analise este cronograma de aulas e extraia TODAS as aulas com datas. Retorne APENAS um array JSON válido, sem explicações:
+[{"date":"2025-03-10","subject":"Nome Exato da Matéria","theme":"Tema da aula","type":"expositiva","location":"Anfiteatro A","requiresJaleco":false}]
+type: expositiva | pratica | especial. requiresJaleco true se location contiver hospital, UBS, santa casa, unidade, clínica, campo (não sala de aula comum). dates em YYYY-MM-DD. Apenas o JSON.` }
+      ]}], isPdf ? 'pdfs-2024-09-25' : undefined, 4096);
+      const raw   = data.content[0].text;
+      const match = raw.match(/\[[\s\S]*\]/);
+      if (!match) throw new Error('Resposta fora do formato esperado.');
+      const aulas = JSON.parse(match[0]);
+      setPreviewCron({ aulas, fileName: file.name });
+    } catch (err) { setStatus(`err:${err.message}`); }
+    setLoadingCron(false);
+  };
+
+  /* ── Confirmar cronograma ── */
+  const confirmarCron = () => {
+    const { aulas, fileName } = previewCron;
+    const novas = [...(cronograma||[])];
+    aulas.forEach(c => {
+      const dup = novas.findIndex(x => x.date===c.date && x.subject===c.subject);
+      if (dup >= 0) novas[dup] = c; else novas.push(c);
+    });
+    setCronograma(novas); lss('atlas_cronograma', novas);
+    saveArquivos([...arquivos, { id:uid(), nome:fileName, tipo:'cronograma' }]);
+    setPreviewCron(null);
+    setStatus(`ok:${aulas.length} aula(s) do cronograma importada(s).`);
   };
 
   /* ── Deleção inline ── */
@@ -1496,8 +1540,67 @@ type: expositiva | pratica | especial. requiresJaleco true se o local for hospit
         </div>
       )}
 
+      {/* Cronograma de Aulas — upload ou prévia */}
+      {!previewCron ? (
+        <div className="card">
+          <div className="card-t"><IcoCal/> 📅 Cronograma de Aulas</div>
+          <div style={{fontSize:'.82rem',color:'var(--muted)',marginBottom:12,lineHeight:1.5}}>
+            PDF com as datas específicas de cada aula — o tema aparecerá na agenda no dia certo.
+          </div>
+          <input ref={cronRef} type="file" accept="application/pdf,image/*"
+            style={{display:'none'}} onChange={uploadCron}/>
+          <button className="btn btn-p btn-w btn-sm"
+            onClick={() => cronRef.current?.click()} disabled={loadingCron}>
+            {loadingCron ? 'Processando…' : 'Enviar cronograma'}
+          </button>
+        </div>
+      ) : (
+        <div className="card fi">
+          <div className="card-t" style={{marginBottom:14}}>
+            <IcoCal/> Prévia — {previewCron.aulas.length} aula(s) encontrada(s)
+          </div>
+          <div style={{marginBottom:14}}>
+            {[...previewCron.aulas]
+              .sort((a,b) => a.date.localeCompare(b.date) || a.subject.localeCompare(b.subject))
+              .slice(0, 30)
+              .map((a,i) => {
+                const fmtDt = new Date(a.date+'T00:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
+                return (
+                  <div key={i} className="imp-ev" style={{marginBottom:5,alignItems:'flex-start',flexDirection:'column',gap:4}}>
+                    <div className="f ac g6" style={{width:'100%'}}>
+                      <span style={{fontSize:'.68rem',fontWeight:800,color:'var(--prim)',minWidth:72}}>{fmtDt}</span>
+                      <span style={{fontWeight:700,fontSize:'.8rem',flex:1}}>{a.subject}</span>
+                    </div>
+                    {a.theme && <div style={{fontSize:'.75rem',color:'var(--prim-l)',paddingLeft:78}}>{a.theme}</div>}
+                    <div className="f g4" style={{paddingLeft:78,flexWrap:'wrap'}}>
+                      {a.type==='pratica'  && <span className="badge b-blue" style={{fontSize:'.62rem',padding:'1px 6px'}}>Prática</span>}
+                      {a.requiresJaleco    && <span className="badge b-org"  style={{fontSize:'.62rem',padding:'1px 6px'}}>🥼 Jaleco</span>}
+                      {a.type==='especial' && <span className="badge b-vio"  style={{fontSize:'.62rem',padding:'1px 6px'}}>Especial</span>}
+                      {a.location && <span style={{fontSize:'.65rem',color:'var(--muted)'}}>· {a.location}</span>}
+                    </div>
+                  </div>
+                );
+              })
+            }
+            {previewCron.aulas.length > 30 && (
+              <div style={{fontSize:'.75rem',color:'var(--muted)',textAlign:'center',padding:'6px 0'}}>
+                +{previewCron.aulas.length - 30} aula(s) não exibida(s) na prévia
+              </div>
+            )}
+          </div>
+          <div className="f g8">
+            <button className="btn btn-p" style={{flex:1,fontSize:'.82rem'}} onClick={confirmarCron}>
+              Confirmar e Importar
+            </button>
+            <button className="btn btn-g" style={{flex:1,fontSize:'.82rem'}} onClick={() => setPreviewCron(null)}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Status */}
-      {status && !previewGrade && !previewEmenta && (
+      {status && !previewGrade && !previewEmenta && !previewCron && (
         <div className={isErr ? 'status-err' : 'status-ok'}>{msg}</div>
       )}
 
@@ -1511,11 +1614,11 @@ type: expositiva | pratica | especial. requiresJaleco true se o local for hospit
             <div key={a.id} className="imp-ev fi" style={{marginBottom:6}}>
               <span style={{
                 fontSize:'.68rem',fontWeight:800,padding:'2px 7px',borderRadius:'var(--r-f)',
-                background: a.tipo==='grade' ? '#ede9fe' : '#d1fae5',
-                color:      a.tipo==='grade' ? '#6d28d9' : '#065f46',
+                background: a.tipo==='grade' ? '#ede9fe' : a.tipo==='cronograma' ? '#dbeafe' : '#d1fae5',
+                color:      a.tipo==='grade' ? '#6d28d9' : a.tipo==='cronograma' ? '#1e40af' : '#065f46',
                 flexShrink: 0,
               }}>
-                {a.tipo === 'grade' ? 'GRADE' : 'EMENTA'}
+                {a.tipo === 'grade' ? 'GRADE' : a.tipo === 'cronograma' ? 'CRON' : 'EMENTA'}
               </span>
               <span style={{flex:1,minWidth:0,fontSize:'.82rem',
                             overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
