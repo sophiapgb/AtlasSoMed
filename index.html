@@ -392,6 +392,32 @@
   @keyframes fi { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
 
   /* ══════════════════════════════════
+     FAB & CALENDÁRIO
+  ══════════════════════════════════ */
+  .fab-plus {
+    width: 50px; height: 50px; border-radius: 50%;
+    background: var(--grad); color: #fff; border: none;
+    font-size: 1.7rem; font-weight: 300; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 18px rgba(124,58,237,.42);
+    transition: all .18s ease;
+  }
+  .fab-plus:hover { box-shadow: 0 6px 26px rgba(124,58,237,.58); transform: scale(1.07); }
+  .cal-panel-bg {
+    position: absolute; inset: 0; z-index: 149;
+    background: rgba(0,0,0,.38); animation: fi .18s ease;
+  }
+  .cal-panel {
+    position: absolute; top: 0; right: 0; bottom: 0;
+    width: 80%; background: var(--surf);
+    border-left: 1px solid var(--border);
+    box-shadow: -6px 0 30px rgba(0,0,0,.28);
+    z-index: 150; overflow-y: auto; padding: 20px 16px;
+    animation: slideR .2s ease;
+  }
+  @keyframes slideR { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+  /* ══════════════════════════════════
      ABA IMPORTAR
   ══════════════════════════════════ */
   .status-ok {
@@ -476,6 +502,13 @@ const CORES = [
   '#8b5cf6','#a855f7','#ec4899','#ef4444',
   '#f59e0b','#10b981','#3b82f6','#06b6d4',
   '#6366f1','#84cc16',
+];
+
+const TIPOS = [
+  { k:'compromisso', l:'Compromisso pessoal', cor:'#8b5cf6' },
+  { k:'falta',       l:'Falta planejada',     cor:'#ef4444' },
+  { k:'lembrete',    l:'Lembrete',            cor:'#f59e0b' },
+  { k:'entrega',     l:'Entrega',             cor:'#10b981' },
 ];
 
 const DIAS = [
@@ -649,58 +682,334 @@ function TabInicio({ agenda, materias, provas }) {
 /* ══════════════════════════════════════════════════
    ABA: AGENDA
 ══════════════════════════════════════════════════ */
-function TabAgenda({ agenda, setAgenda }) {
-  const [dia,  setDia]  = useState(hojek);
-  const [hora, setHora] = useState('');
-  const [desc, setDesc] = useState('');
+function TabAgenda({ agenda, setAgenda, eventos, setEventos }) {
+  const [view,      setView]      = useState('lista');
+  const [diaK,      setDiaK]      = useState(hojek);
+  const [semOff,    setSemOff]    = useState(0);
+  const [mesOff,    setMesOff]    = useState(0);
+  const [diaAberto, setDiaAberto] = useState(null); // 'YYYY-MM-DD'
+  const [showForm,  setShowForm]  = useState(false);
+  const [hora,      setHora]      = useState('');
+  const [desc,      setDesc]      = useState('');
+  const [fTit,  setFTit]  = useState('');
+  const [fData, setFData] = useState('');
+  const [fHora, setFHora] = useState('');
+  const [fTipo, setFTipo] = useState('compromisso');
+  const [fCor,  setFCor]  = useState('#8b5cf6');
 
-  const salvar = (novo) => { setAgenda(novo); lss('atlas_agenda', novo); };
-  const add = () => {
+  const salvAgenda  = (n) => { setAgenda(n);  lss('atlas_agenda',  n); };
+  const salvEventos = (n) => { setEventos(n); lss('atlas_eventos', n); };
+
+  const addAula = () => {
     if (!hora || !desc.trim()) return;
-    salvar({ ...agenda, [dia]: [...agenda[dia], { id:uid(), hora, desc:desc.trim() }] });
+    salvAgenda({ ...agenda, [diaK]: [...(agenda[diaK]||[]), { id:uid(), hora, desc:desc.trim() }] });
     setDesc('');
   };
-  const del = (id) => salvar({ ...agenda, [dia]: agenda[dia].filter(e => e.id !== id) });
+  const delAula = (id) => salvAgenda({ ...agenda, [diaK]: (agenda[diaK]||[]).filter(e=>e.id!==id) });
 
-  const eventos = [...(agenda[dia] || [])].sort((a,b) => a.hora.localeCompare(b.hora));
+  const addEvento = () => {
+    if (!fTit.trim() || !fData) return;
+    salvEventos([...eventos, { id:uid(), titulo:fTit.trim(), data:fData, hora:fHora, tipo:fTipo, cor:fCor }]);
+    setFTit(''); setFData(''); setFHora(''); setFTipo('compromisso'); setFCor('#8b5cf6');
+    setShowForm(false);
+  };
+  const delEvento = (id) => salvEventos(eventos.filter(e=>e.id!==id));
+
+  const openForm = (preDate) => {
+    if (preDate) setFData(preDate); else setFData('');
+    setShowForm(true);
+  };
+
+  /* ── Semana ── */
+  const weekDates = (() => {
+    const hoje = new Date(), dow = hoje.getDay();
+    const mon  = new Date(hoje);
+    mon.setDate(hoje.getDate() + (dow===0?-6:1-dow) + semOff*7);
+    mon.setHours(0,0,0,0);
+    return DIAS.map((d,i) => {
+      const dt = new Date(mon); dt.setDate(mon.getDate()+i);
+      const ds = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+      return { ...d, date:ds, num:dt.getDate() };
+    });
+  })();
+  const diaInfo    = weekDates.find(d=>d.k===diaK)||weekDates[0];
+  const selDate    = diaInfo.date;
+  const evsDia     = eventos.filter(e=>e.data===selDate);
+  const faltasDia  = evsDia.filter(e=>e.tipo==='falta');
+  const aulasNoDia = [...(agenda[diaK]||[])].sort((a,b)=>a.hora.localeCompare(b.hora));
+  const faltaDeAula = (a) => faltasDia.find(f=>!f.hora||f.hora===a.hora);
+
+  /* ── Calendário ── */
+  const hoje     = new Date();
+  const calBase  = new Date(hoje.getFullYear(), hoje.getMonth()+mesOff, 1);
+  const calAno   = calBase.getFullYear();
+  const calMes   = calBase.getMonth();
+  const diasMes  = new Date(calAno,calMes+1,0).getDate();
+  const primDow  = new Date(calAno,calMes,1).getDay();
+  const startOff = primDow===0?6:primDow-1;
+  const hojeStr  = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+  const mesNome  = calBase.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  const calDs    = (d) => `${calAno}-${String(calMes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const calDk    = (d) => JS2KEY[new Date(calAno,calMes,d).getDay()];
+  const dotsFor  = (d) => {
+    const dateStr=calDs(d), dayKey=calDk(d);
+    const ac=(agenda[dayKey]||[]).map(a=>a.cor||'#8b5cf6');
+    const ec=eventos.filter(e=>e.data===dateStr).map(e=>e.cor);
+    return [...ac,...ec].slice(0,4);
+  };
+
+  const calCells=[];
+  for(let i=0;i<startOff;i++) calCells.push(null);
+  for(let d=1;d<=diasMes;d++) calCells.push(d);
+  while(calCells.length%7!==0) calCells.push(null);
+
+  /* ── Painel lateral ── */
+  const panDk    = diaAberto ? JS2KEY[new Date(diaAberto+'T00:00:00').getDay()] : null;
+  const panAulas = diaAberto ? [...(agenda[panDk]||[])].sort((a,b)=>a.hora.localeCompare(b.hora)) : [];
+  const panEvs   = diaAberto ? eventos.filter(e=>e.data===diaAberto) : [];
+  const panFmt   = diaAberto
+    ? new Date(diaAberto+'T00:00:00').toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})
+    : '';
 
   return (
-    <div>
-      <div className="ph">
-        <div className="ph-t">Agenda Semanal</div>
-        <div className="ph-s">Aulas e compromissos fixos por dia</div>
-      </div>
-
-      <div className="pills">
-        {DIAS.map(d => (
-          <button key={d.k} className={`pill ${dia===d.k?'on':''}`} onClick={()=>setDia(d.k)}>{d.l}</button>
-        ))}
-      </div>
-
-      <div className="card">
-        <div className="card-t"><IcoCal/> Adicionar Aula</div>
-        <div className="row">
-          <input className="inp" type="time" value={hora} onChange={e=>setHora(e.target.value)} style={{flex:'0 0 112px'}}/>
-          <input className="inp" value={desc} onChange={e=>setDesc(e.target.value)}
-            onKeyDown={e=>e.key==='Enter'&&add()} placeholder="Ex: Anatomia — Sala 3"/>
-        </div>
-        <button className="btn btn-p btn-w btn-sm" onClick={add}>Adicionar</button>
-      </div>
-
-      {eventos.length === 0
-        ? <div className="empty fi"><IcoCal/><div className="empty-t">Sem aulas</div><div className="empty-s">Adicione aulas para {DIAS.find(d=>d.k===dia)?.ext}</div></div>
-        : eventos.map(ev => (
-          <div key={ev.id} className="item fi">
-            <div className="item-dot" style={{background: ev.cor || 'var(--prim)'}}/>
-            <div className="item-main">
-              <div className="item-title">{ev.desc}</div>
-              <div className="item-sub" style={{color: ev.cor || 'var(--muted)'}}>{ev.hora}</div>
+    <>
+      {/* ═══ CONTEÚDO ═══ */}
+      <div>
+        {/* Header com toggle */}
+        <div className="ph">
+          <div className="f ac jb">
+            <div>
+              <div className="ph-t">Agenda</div>
+              <div className="ph-s">{view==='lista'?'Aulas e compromissos':mesNome}</div>
             </div>
-            <button className="btn btn-d btn-sm" onClick={()=>del(ev.id)}><IcoTrash/></button>
+            <div style={{display:'flex',background:'var(--surf2)',borderRadius:'var(--r-f)',padding:3,flexShrink:0}}>
+              {[['lista','Lista'],['cal','Mês']].map(([v,l])=>(
+                <button key={v} onClick={()=>setView(v)} style={{
+                  padding:'5px 14px',borderRadius:'var(--r-f)',border:'none',
+                  background:view===v?'var(--prim)':'transparent',
+                  color:view===v?'#fff':'var(--muted)',
+                  fontSize:'.72rem',fontWeight:800,cursor:'pointer',transition:'all .15s',
+                }}>{l}</button>
+              ))}
+            </div>
           </div>
-        ))
-      }
-    </div>
+        </div>
+
+        {/* ── Lista Diária ── */}
+        {view==='lista'&&(
+          <>
+            <div className="f ac g6 mb10">
+              <button className="btn btn-g btn-sm" style={{padding:'6px 10px',flexShrink:0}} onClick={()=>setSemOff(s=>s-1)}>‹</button>
+              <div className="pills" style={{flex:1,margin:0}}>
+                {weekDates.map(d=>(
+                  <button key={d.k} className={`pill ${diaK===d.k?'on':''}`} onClick={()=>setDiaK(d.k)}
+                    style={{display:'flex',flexDirection:'column',alignItems:'center',gap:1,padding:'5px 9px'}}>
+                    <span style={{fontSize:'.62rem',fontWeight:800,letterSpacing:'.3px'}}>{d.l}</span>
+                    <span style={{fontSize:'.58rem',opacity:.75}}>{d.num}</span>
+                  </button>
+                ))}
+              </div>
+              <button className="btn btn-g btn-sm" style={{padding:'6px 10px',flexShrink:0}} onClick={()=>setSemOff(s=>s+1)}>›</button>
+            </div>
+            {semOff!==0&&(
+              <button className="btn btn-g btn-sm btn-w mb10" onClick={()=>setSemOff(0)}>Semana atual</button>
+            )}
+            <div className="card">
+              <div className="card-t"><IcoCal/> Adicionar Aula Fixa</div>
+              <div className="row">
+                <input className="inp" type="time" value={hora} onChange={e=>setHora(e.target.value)} style={{flex:'0 0 112px'}}/>
+                <input className="inp" value={desc} onChange={e=>setDesc(e.target.value)}
+                  onKeyDown={e=>e.key==='Enter'&&addAula()} placeholder="Ex: Anatomia — Sala 3"/>
+              </div>
+              <button className="btn btn-p btn-w btn-sm" onClick={addAula}>Adicionar</button>
+            </div>
+            {aulasNoDia.length===0&&evsDia.length===0
+              ? <div className="empty fi"><IcoCal/><div className="empty-t">Sem eventos</div><div className="empty-s">Nenhuma aula para {diaInfo.ext}</div></div>
+              : <>
+                  {aulasNoDia.map(ev=>{
+                    const f=faltaDeAula(ev);
+                    return (
+                      <div key={ev.id} className="item fi" style={f?{opacity:.55}:{}}>
+                        <div className="item-dot" style={{background:ev.cor||'var(--prim)'}}/>
+                        <div className="item-main">
+                          <div className="item-title">
+                            {f&&'🚫 '}{ev.desc}
+                            {f&&<span style={{fontSize:'.7rem',color:'#ef4444',marginLeft:5}}>falta</span>}
+                          </div>
+                          <div className="item-sub" style={{color:ev.cor||'var(--muted)'}}>{ev.hora}</div>
+                        </div>
+                        <button className="btn btn-d btn-sm" onClick={()=>delAula(ev.id)}><IcoTrash/></button>
+                      </div>
+                    );
+                  })}
+                  {evsDia.map(ev=>{
+                    const isFalta=ev.tipo==='falta';
+                    return (
+                      <div key={ev.id} className="item fi"
+                        style={isFalta?{borderLeft:'3px solid #ef4444',paddingLeft:11}:{}}>
+                        <div className="item-dot" style={{background:ev.cor}}/>
+                        <div className="item-main">
+                          <div className="item-title">{isFalta&&'🚫 '}{ev.titulo}</div>
+                          <div className="item-sub" style={{color:ev.cor}}>
+                            {ev.hora?`${ev.hora} · `:''}{TIPOS.find(t=>t.k===ev.tipo)?.l}
+                          </div>
+                        </div>
+                        <button className="btn btn-d btn-sm" onClick={()=>delEvento(ev.id)}><IcoTrash/></button>
+                      </div>
+                    );
+                  })}
+                </>
+            }
+          </>
+        )}
+
+        {/* ── Calendário Mensal ── */}
+        {view==='cal'&&(
+          <>
+            <div className="f ac jb mb14">
+              <button className="btn btn-g btn-sm" style={{padding:'6px 10px'}} onClick={()=>setMesOff(m=>m-1)}>‹</button>
+              <span style={{fontFamily:'Sora,sans-serif',fontWeight:600,fontSize:'.88rem',textTransform:'capitalize'}}>
+                {mesNome}
+              </span>
+              <button className="btn btn-g btn-sm" style={{padding:'6px 10px'}} onClick={()=>setMesOff(m=>m+1)}>›</button>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',marginBottom:3}}>
+              {['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(h=>(
+                <div key={h} style={{textAlign:'center',fontSize:'.6rem',fontWeight:800,color:'var(--muted)',paddingBottom:4}}>{h}</div>
+              ))}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:3}}>
+              {calCells.map((d,i)=>{
+                if(!d) return <div key={i}/>;
+                const dateStr=calDs(d), isHoje=dateStr===hojeStr;
+                const dots=dotsFor(d);
+                const hasFlt=eventos.some(e=>e.data===dateStr&&e.tipo==='falta');
+                return (
+                  <div key={i} onClick={()=>setDiaAberto(dateStr)}
+                    style={{
+                      minHeight:46,borderRadius:8,padding:'5px 3px 4px',
+                      background:isHoje?'var(--prim)':'var(--surf)',
+                      border:isHoje?'none':'1px solid var(--border)',
+                      cursor:'pointer',display:'flex',flexDirection:'column',
+                      alignItems:'center',gap:2,transition:'background .12s',
+                    }}>
+                    <span style={{fontSize:'.72rem',fontWeight:isHoje?800:500,lineHeight:1,
+                                  color:isHoje?'#fff':'var(--text)'}}>{d}</span>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:2,justifyContent:'center',maxWidth:28}}>
+                      {dots.slice(0,3).map((c,j)=>(
+                        <div key={j} style={{width:4,height:4,borderRadius:'50%',background:c}}/>
+                      ))}
+                      {dots.length>3&&<div style={{width:4,height:4,borderRadius:'50%',background:'var(--muted)'}}/>}
+                    </div>
+                    {hasFlt&&<span style={{fontSize:'.5rem',lineHeight:1}}>🚫</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* FAB */}
+        <div style={{position:'sticky',bottom:'calc(var(--nav) + 12px)',
+                     display:'flex',justifyContent:'flex-end',
+                     marginTop:16,pointerEvents:'none',zIndex:50}}>
+          <button className="fab-plus" style={{pointerEvents:'all'}}
+            onClick={()=>openForm(view==='cal'&&diaAberto?diaAberto:null)}>+</button>
+        </div>
+      </div>
+
+      {/* ═══ PAINEL LATERAL CALENDÁRIO ═══ */}
+      {diaAberto&&(
+        <>
+          <div className="cal-panel-bg" onClick={()=>setDiaAberto(null)}/>
+          <div className="cal-panel">
+            <div className="f ac jb" style={{marginBottom:16}}>
+              <div>
+                <div style={{fontFamily:'Sora,sans-serif',fontWeight:700,fontSize:'.88rem',
+                              textTransform:'capitalize',lineHeight:1.2}}>{panFmt}</div>
+                <div style={{fontSize:'.72rem',color:'var(--muted)',marginTop:4}}>
+                  {panAulas.length} aula(s) · {panEvs.length} evento(s)
+                </div>
+              </div>
+              <button className="modal-close" onClick={()=>setDiaAberto(null)}>✕</button>
+            </div>
+
+            {panAulas.length===0&&panEvs.length===0&&(
+              <div style={{textAlign:'center',color:'var(--muted)',fontSize:'.82rem',padding:'16px 0'}}>
+                Sem eventos neste dia.
+              </div>
+            )}
+
+            {panAulas.map(ev=>{
+              const f=panEvs.find(e=>e.tipo==='falta'&&(!e.hora||e.hora===ev.hora));
+              return (
+                <div key={ev.id} className="item" style={{marginBottom:6,...(f?{opacity:.5}:{})}}>
+                  <div className="item-dot" style={{background:ev.cor||'var(--prim)'}}/>
+                  <div className="item-main">
+                    <div className="item-title">{f&&'🚫 '}{ev.desc}</div>
+                    <div className="item-sub" style={{color:ev.cor||'var(--muted)'}}>{ev.hora}</div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {panEvs.map(ev=>(
+              <div key={ev.id} className="item" style={{marginBottom:6,borderLeft:`3px solid ${ev.cor}`,paddingLeft:11}}>
+                <div className="item-dot" style={{background:ev.cor}}/>
+                <div className="item-main">
+                  <div className="item-title">{ev.tipo==='falta'&&'🚫 '}{ev.titulo}</div>
+                  <div className="item-sub" style={{color:ev.cor}}>
+                    {ev.hora?`${ev.hora} · `:''}{TIPOS.find(t=>t.k===ev.tipo)?.l}
+                  </div>
+                </div>
+                <button className="btn btn-d btn-sm" onClick={()=>delEvento(ev.id)}><IcoTrash/></button>
+              </div>
+            ))}
+
+            <button className="btn btn-p btn-w btn-sm" style={{marginTop:12}}
+              onClick={()=>{const d=diaAberto; setDiaAberto(null); openForm(d);}}>
+              + Evento neste dia
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ═══ MODAL NOVO EVENTO ═══ */}
+      {showForm&&(
+        <div className="modal-overlay" onClick={()=>setShowForm(false)}>
+          <div className="modal" onClick={e=>e.stopPropagation()}>
+            <div className="modal-hdr">
+              <span className="modal-tit">Novo Evento</span>
+              <button className="modal-close" onClick={()=>setShowForm(false)}>✕</button>
+            </div>
+            <div className="col">
+              <input className="inp" value={fTit} onChange={e=>setFTit(e.target.value)}
+                placeholder="Título do evento…"/>
+              <div className="row" style={{marginBottom:0}}>
+                <input className="inp" type="date" value={fData} onChange={e=>setFData(e.target.value)}/>
+                <input className="inp" type="time" value={fHora} onChange={e=>setFHora(e.target.value)}/>
+              </div>
+              <select className="inp" value={fTipo} onChange={e=>{
+                const t=TIPOS.find(x=>x.k===e.target.value);
+                setFTipo(e.target.value); setFCor(t?.cor||'#8b5cf6');
+              }}>
+                {TIPOS.map(t=><option key={t.k} value={t.k}>{t.l}</option>)}
+              </select>
+              <div className="f ac g8">
+                <span className="sm" style={{color:'var(--muted)',whiteSpace:'nowrap'}}>Cor:</span>
+                <div className="swatches">
+                  {CORES.map(c=>(
+                    <div key={c} className={`swatch ${fCor===c?'on':''}`}
+                      style={{background:c}} onClick={()=>setFCor(c)}/>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <button className="btn btn-p btn-w" onClick={addEvento}>Salvar Evento</button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1246,6 +1555,7 @@ function App() {
   const [agenda,     setAgenda]     = useState(() => { const v=ls('atlas_agenda',null); return v||{...AGENDA_VAZIA}; });
   const [materias,   setMat]        = useState(() => ls('atlas_mat',   []));
   const [provas,     setPro]        = useState(() => ls('atlas_pro',   []));
+  const [eventos,    setEvs]        = useState(() => ls('atlas_eventos', []));
 
   const ABAS = [
     { id:'inicio',   lbl:'Início',   Ico: IcoHome   },
@@ -1258,7 +1568,7 @@ function App() {
   const conteudo = (() => {
     switch (aba) {
       case 'inicio':   return <TabInicio   agenda={agenda} materias={materias} provas={provas}/>;
-      case 'agenda':   return <TabAgenda   agenda={agenda} setAgenda={setAgenda}/>;
+      case 'agenda':   return <TabAgenda   agenda={agenda} setAgenda={setAgenda} eventos={eventos} setEventos={setEvs}/>;
       case 'importar': return <TabImportar apiKey={apiKey}
                                            agenda={agenda} setAgenda={setAgenda}
                                            materias={materias} setMaterias={setMat}/>;
