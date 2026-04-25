@@ -688,7 +688,7 @@ function TabInicio({ agenda, materias, provas }) {
 /* ══════════════════════════════════════════════════
    ABA: AGENDA
 ══════════════════════════════════════════════════ */
-function TabAgenda({ agenda, setAgenda, eventos, setEventos, schedule }) {
+function TabAgenda({ agenda, setAgenda, eventos, setEventos, schedule, cronograma }) {
   const [view,      setView]      = useState('lista');
   const [diaK,      setDiaK]      = useState(hojek);
   const [semOff,    setSemOff]    = useState(0);
@@ -745,9 +745,10 @@ function TabAgenda({ agenda, setAgenda, eventos, setEventos, schedule }) {
   const aulasNoDia = [...(agenda[diaK]||[])].sort((a,b)=>a.hora.localeCompare(b.hora));
   const faltaDeAula  = (a) => faltasDia.find(f=>!f.hora||f.hora===a.hora);
   const scheduleFor  = (ev, date) => {
-    if (!schedule?.length) return null;
+    const pool = [...(schedule||[]), ...(cronograma||[])];
+    if (!pool.length) return null;
     const base = ev.desc.split('—')[0].trim().toLowerCase();
-    return schedule.find(s =>
+    return pool.find(s =>
       s.date === date &&
       (s.subject.toLowerCase().includes(base) || base.includes(s.subject.toLowerCase()))
     ) || null;
@@ -860,7 +861,7 @@ function TabAgenda({ agenda, setAgenda, eventos, setEventos, schedule }) {
                             {f&&<span style={{fontSize:'.7rem',color:'#ef4444',marginLeft:5,textTransform:'none'}}>falta</span>}
                           </div>
                           {sched?.theme&&(
-                            <div style={{fontSize:'.76rem',color:'var(--muted)',marginTop:3,lineHeight:1.35}}>
+                            <div style={{fontSize:'.76rem',color:'var(--prim-l)',marginTop:3,lineHeight:1.35}}>
                               {sched.theme}
                             </div>
                           )}
@@ -1219,7 +1220,7 @@ function ModalConfig({ apiKey, setApiKey, onClose }) {
 /* ══════════════════════════════════════════════════
    ABA: IMPORTAR
 ══════════════════════════════════════════════════ */
-function TabImportar({ apiKey, agenda, setAgenda, materias, setMaterias }) {
+function TabImportar({ apiKey, agenda, setAgenda, materias, setMaterias, cronograma, setCronograma }) {
   const [loadingGrade,  setLoadingGrade]  = useState(false);
   const [loadingEmenta, setLoadingEmenta] = useState(false);
   const [status,        setStatus]        = useState(''); // 'ok:msg' | 'err:msg'
@@ -1239,7 +1240,7 @@ function TabImportar({ apiKey, agenda, setAgenda, materias, setMaterias }) {
     r.readAsDataURL(file);
   });
 
-  const callAPI = async (messages, beta) => {
+  const callAPI = async (messages, beta, maxTok=2048) => {
     const headers = {
       'Content-Type': 'application/json',
       'x-api-key': apiKey.trim(),
@@ -1249,7 +1250,7 @@ function TabImportar({ apiKey, agenda, setAgenda, materias, setMaterias }) {
     if (beta) headers['anthropic-beta'] = beta;
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST', headers,
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2048, messages })
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: maxTok, messages })
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
     return res.json();
@@ -1319,10 +1320,10 @@ day: 0=Dom 1=Seg 2=Ter 3=Qua 4=Qui 5=Sex 6=Sáb. time em HH:MM. Apenas o JSON.` 
         const data  = await callAPI([{ role:'user', content:[
           isPdf ? { type:'document', source:src } : { type:'image', source:src },
           { type:'text', text:
-`Analise esta ementa e extraia as informações. Retorne APENAS um objeto JSON válido, sem explicações:
-{"subject":"Nome da Disciplina","professor":"Nome do Professor","topics":["Tópico 1","Tópico 2"],"examDates":["2025-06-15"]}
-examDates em YYYY-MM-DD. Apenas o JSON.` }
-        ]}], isPdf ? 'pdfs-2024-09-25' : undefined);
+`Analise esta ementa/cronograma e extraia as informações. Retorne APENAS um objeto JSON válido, sem explicações:
+{"subject":"Nome da Disciplina","professor":"Nome do Professor","topics":["Tópico 1","Tópico 2"],"examDates":["2025-06-15"],"cronograma":[{"date":"2025-03-10","theme":"Tema da aula","type":"expositiva","location":"Anfiteatro A","requiresJaleco":false}]}
+type: expositiva | pratica | especial. requiresJaleco true se o local for hospital, UBS, Santa Casa, laboratório de habilidades, campo, etc (não sala de aula comum). Se não houver cronograma com datas específicas, retorne cronograma:[]. examDates e dates em YYYY-MM-DD. Apenas o JSON.` }
+        ]}], isPdf ? 'pdfs-2024-09-25' : undefined, 4096);
         const raw   = data.content[0].text;
         const match = raw.match(/\{[\s\S]*\}/);
         if (!match) throw new Error('Resposta fora do formato esperado.');
@@ -1336,6 +1337,7 @@ examDates em YYYY-MM-DD. Apenas o JSON.` }
   /* ── Confirmar ementas ── */
   const confirmarEmenta = () => {
     const novas = [...materias];
+    const novasCron = [...(cronograma||[])];
     previewEmenta.forEach(em => {
       const idx = novas.findIndex(m => m.nome.toLowerCase() === (em.subject||'').toLowerCase());
       if (idx >= 0) {
@@ -1344,8 +1346,15 @@ examDates em YYYY-MM-DD. Apenas o JSON.` }
         novas.push({ id:uid(), nome:em.subject, cor:CORES[novas.length % CORES.length],
                      perf:50, professor:em.professor, topics:em.topics||[], examDates:em.examDates||[] });
       }
+      if (em.cronograma?.length) {
+        em.cronograma.forEach(c => {
+          const dup = novasCron.findIndex(x => x.date===c.date && x.subject===c.subject);
+          if (dup >= 0) novasCron[dup] = c; else novasCron.push(c);
+        });
+      }
     });
     setMaterias(novas); lss('atlas_mat', novas);
+    setCronograma(novasCron); lss('atlas_cronograma', novasCron);
     saveArquivos([...arquivos, ...previewEmenta.map(em => ({ id:uid(), nome:em.fileName, tipo:'ementa' }))]);
     setStatus(`ok:${previewEmenta.length} ementa(s) importada(s).`);
     setPreviewEmenta(null);
@@ -1597,6 +1606,7 @@ function App() {
   const [provas,     setPro]        = useState(() => ls('atlas_pro',   []));
   const [eventos,    setEvs]        = useState(() => ls('atlas_eventos', []));
   const [schedule,   setSched]      = useState(() => ls('atlas_schedule', []));
+  const [cronograma, setCron]       = useState(() => ls('atlas_cronograma', []));
 
   const ABAS = [
     { id:'inicio',   lbl:'Início',   Ico: IcoHome   },
@@ -1609,10 +1619,11 @@ function App() {
   const conteudo = (() => {
     switch (aba) {
       case 'inicio':   return <TabInicio   agenda={agenda} materias={materias} provas={provas}/>;
-      case 'agenda':   return <TabAgenda   agenda={agenda} setAgenda={setAgenda} eventos={eventos} setEventos={setEvs} schedule={schedule}/>;
+      case 'agenda':   return <TabAgenda   agenda={agenda} setAgenda={setAgenda} eventos={eventos} setEventos={setEvs} schedule={schedule} cronograma={cronograma}/>;
       case 'importar': return <TabImportar apiKey={apiKey}
                                            agenda={agenda} setAgenda={setAgenda}
-                                           materias={materias} setMaterias={setMat}/>;
+                                           materias={materias} setMaterias={setMat}
+                                           cronograma={cronograma} setCronograma={setCron}/>;
       case 'materias': return <TabMaterias materias={materias} setMaterias={setMat}/>;
       case 'provas':   return <TabProvas   provas={provas} setProvas={setPro} materias={materias}/>;
       default:         return null;
