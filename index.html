@@ -1361,9 +1361,22 @@ type: expositiva | pratica | especial. requiresJaleco true se o local for hospit
   };
 
   /* ── Deleção inline ── */
-  const delAula     = (dayK, id) => { const n={...agenda,[dayK]:agenda[dayK].filter(e=>e.id!==id)}; setAgenda(n); lss('atlas_agenda',n); };
-  const delMat      = (id)       => { const n=materias.filter(m=>m.id!==id); setMaterias(n); lss('atlas_mat',n); };
-  const delArquivo  = (id)       => saveArquivos(arquivos.filter(a => a.id !== id));
+  const delAula    = (dayK, id) => { const n={...agenda,[dayK]:agenda[dayK].filter(e=>e.id!==id)}; setAgenda(n); lss('atlas_agenda',n); };
+  const delMat     = (id) => {
+    const m = materias.find(x=>x.id===id);
+    const nm = materias.filter(x=>x.id!==id); setMaterias(nm); lss('atlas_mat',nm);
+    if (m) {
+      const nc=(cronograma||[]).filter(c=>c.subject.toLowerCase()!==m.nome.toLowerCase());
+      setCronograma(nc); lss('atlas_cronograma',nc);
+    }
+  };
+  const delArquivo = (id) => saveArquivos(arquivos.filter(a=>a.id!==id));
+  const apagarTudo = () => {
+    setMaterias([]); lss('atlas_mat',[]);
+    setCronograma([]); lss('atlas_cronograma',[]);
+    saveArquivos([]);
+    lss('atlas_pdfs',[]);
+  };
 
   /* ── Derivados ── */
   const KEY_NAMES  = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -1517,8 +1530,14 @@ type: expositiva | pratica | especial. requiresJaleco true se o local for hospit
       {/* Dados importados */}
       {temDados && (
         <>
-          <div className="card-t" style={{marginTop:14,marginBottom:12}}>
-            <IcoCal/> Dados importados
+          <div className="f ac jb" style={{marginTop:14,marginBottom:12}}>
+            <div className="card-t" style={{margin:0}}>
+              <IcoCal/> Dados importados
+            </div>
+            <button className="btn btn-d btn-sm" style={{fontSize:'.75rem',padding:'5px 10px'}}
+              onClick={apagarTudo}>
+              🗑 Apagar tudo
+            </button>
           </div>
 
           {totalAulas > 0 && (
