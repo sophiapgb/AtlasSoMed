@@ -81,7 +81,18 @@
     display: flex; align-items: center; justify-content: center;
     box-shadow: var(--sh-sm);
     flex-shrink: 0; z-index: 10;
+    position: relative;
   }
+  .btn-gear {
+    position: absolute; right: 14px;
+    background: transparent; border: none;
+    color: var(--muted); cursor: pointer;
+    padding: 6px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .18s ease;
+  }
+  .btn-gear:hover { background: var(--surf2); color: var(--prim); }
+  .btn-gear svg { width: 20px; height: 20px; }
   .logo {
     font-family: 'Sora', sans-serif;
     font-size: 1.45rem; font-weight: 700; letter-spacing: -.5px;
@@ -414,6 +425,41 @@
   .btn-x { background:transparent; border:none; color:var(--muted); cursor:pointer;
             font-size:.9rem; padding:0 4px; line-height:1; flex-shrink:0; }
   .btn-x:hover { color:#ef4444; }
+
+  /* ══════════════════════════════════
+     MODAL CONFIGURAÇÕES
+  ══════════════════════════════════ */
+  .modal-overlay {
+    position: absolute; inset: 0; z-index: 200;
+    background: rgba(0,0,0,.6);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    backdrop-filter: blur(3px);
+    animation: fi .18s ease;
+  }
+  .modal {
+    background: var(--surf); border-radius: var(--r);
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 40px rgba(0,0,0,.45);
+    width: 100%; padding: 22px 20px;
+  }
+  .modal-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .modal-tit {
+    font-family: 'Sora', sans-serif; font-size: 1.05rem; font-weight: 700;
+  }
+  .modal-close {
+    background: transparent; border: none; cursor: pointer;
+    color: var(--muted); font-size: 1.1rem; padding: 4px 6px;
+    border-radius: 6px; line-height: 1; transition: all .15s;
+  }
+  .modal-close:hover { background: var(--surf2); color: var(--text); }
+  .modal-label {
+    font-size: .75rem; font-weight: 700; color: var(--text2);
+    margin-bottom: 7px; display: block;
+  }
   </style>
 </head>
 <body>
@@ -511,6 +557,12 @@ const IcoKey = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="7.5" cy="15.5" r="5.5"/>
     <path d="m21 2-9.6 9.6M15.5 7.5l2 2L21 6l-2-2"/>
+  </svg>
+);
+const IcoGear = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+    <circle cx="12" cy="12" r="3"/>
   </svg>
 );
 
@@ -787,9 +839,38 @@ function TabProvas({ provas, setProvas, materias }) {
 
 
 /* ══════════════════════════════════════════════════
+   MODAL: CONFIGURAÇÕES
+══════════════════════════════════════════════════ */
+function ModalConfig({ apiKey, setApiKey, onClose }) {
+  const saveKey = (v) => { setApiKey(v); lss('atlas_apikey', v); };
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-hdr">
+          <span className="modal-tit">Configurações</span>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <label className="modal-label"><IcoKey style={{width:13,height:13,display:'inline',marginRight:5}}/>
+          Chave API Anthropic
+        </label>
+        <input className="inp" type="password" value={apiKey}
+          onChange={e => saveKey(e.target.value)}
+          placeholder="sk-ant-api03-…" autoComplete="off"/>
+        {apiKey.trim()
+          ? <div style={{fontSize:'.75rem',color:'#10b981',fontWeight:700,marginTop:7}}>✓ Chave salva</div>
+          : <div style={{fontSize:'.73rem',color:'var(--muted)',marginTop:7,lineHeight:1.4}}>
+              Necessária para importar PDFs via IA.
+            </div>
+        }
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════
    ABA: IMPORTAR
 ══════════════════════════════════════════════════ */
-function TabImportar({ apiKey, setApiKey, agenda, setAgenda, materias, setMaterias }) {
+function TabImportar({ apiKey, agenda, setAgenda, materias, setMaterias }) {
   const [loadingGrade,  setLoadingGrade]  = useState(false);
   const [loadingEmenta, setLoadingEmenta] = useState(false);
   const [status,        setStatus]        = useState(''); // 'ok:msg' | 'err:msg'
@@ -800,7 +881,6 @@ function TabImportar({ apiKey, setApiKey, agenda, setAgenda, materias, setMateri
   const gradeRef  = useRef(null);
   const ementaRef = useRef(null);
 
-  const saveKey      = (v)    => { setApiKey(v); lss('atlas_apikey', v); };
   const saveArquivos = (list) => { setArquivos(list); lss('atlas_arquivos', list); };
 
   const toBase64 = (file) => new Promise((res, rej) => {
@@ -940,17 +1020,6 @@ examDates em YYYY-MM-DD. Apenas o JSON.` }
       <div className="ph">
         <div className="ph-t">Importar</div>
         <div className="ph-s">Preencha agenda e matérias automaticamente com IA</div>
-      </div>
-
-      {/* Chave API */}
-      <div className="card">
-        <div className="card-t"><IcoKey/> Chave API Anthropic</div>
-        <input className="inp" type="password" value={apiKey}
-          onChange={e => saveKey(e.target.value)}
-          placeholder="sk-ant-api03-…" autoComplete="off"/>
-        {apiKey.trim() && (
-          <div style={{fontSize:'.75rem',color:'#10b981',fontWeight:700,marginTop:6}}>✓ Chave salva</div>
-        )}
       </div>
 
       {/* Grade horária — upload ou prévia */}
@@ -1171,11 +1240,12 @@ examDates em YYYY-MM-DD. Apenas o JSON.` }
    APP ROOT
 ══════════════════════════════════════════════════ */
 function App() {
-  const [aba,      setAba]     = useState('inicio');
-  const [apiKey,   setApiKey]  = useState(() => ls('atlas_apikey', ''));
-  const [agenda,   setAgenda]  = useState(() => { const v=ls('atlas_agenda',null); return v||{...AGENDA_VAZIA}; });
-  const [materias, setMat]     = useState(() => ls('atlas_mat',   []));
-  const [provas,   setPro]     = useState(() => ls('atlas_pro',   []));
+  const [aba,        setAba]        = useState('inicio');
+  const [apiKey,     setApiKey]     = useState(() => ls('atlas_apikey', ''));
+  const [configOpen, setConfigOpen] = useState(false);
+  const [agenda,     setAgenda]     = useState(() => { const v=ls('atlas_agenda',null); return v||{...AGENDA_VAZIA}; });
+  const [materias,   setMat]        = useState(() => ls('atlas_mat',   []));
+  const [provas,     setPro]        = useState(() => ls('atlas_pro',   []));
 
   const ABAS = [
     { id:'inicio',   lbl:'Início',   Ico: IcoHome   },
@@ -1189,7 +1259,7 @@ function App() {
     switch (aba) {
       case 'inicio':   return <TabInicio   agenda={agenda} materias={materias} provas={provas}/>;
       case 'agenda':   return <TabAgenda   agenda={agenda} setAgenda={setAgenda}/>;
-      case 'importar': return <TabImportar apiKey={apiKey} setApiKey={setApiKey}
+      case 'importar': return <TabImportar apiKey={apiKey}
                                            agenda={agenda} setAgenda={setAgenda}
                                            materias={materias} setMaterias={setMat}/>;
       case 'materias': return <TabMaterias materias={materias} setMaterias={setMat}/>;
@@ -1205,7 +1275,14 @@ function App() {
           <div className="logo-gem"/>
           <span>Atlas</span><span className="logo-so">So</span><span>Med</span>
         </div>
+        <button className="btn-gear" onClick={() => setConfigOpen(true)} title="Configurações">
+          <IcoGear/>
+        </button>
       </header>
+
+      {configOpen && (
+        <ModalConfig apiKey={apiKey} setApiKey={setApiKey} onClose={() => setConfigOpen(false)}/>
+      )}
 
       <main className="main">
         <div className="page">{conteudo}</div>
