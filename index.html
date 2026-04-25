@@ -744,7 +744,7 @@ function TabAgenda({ agenda, setAgenda, eventos, setEventos, schedule, cronogram
   const faltasDia  = evsDia.filter(e=>e.tipo==='falta');
   const aulasNoDia = [...(agenda[diaK]||[])].sort((a,b)=>a.hora.localeCompare(b.hora));
   const faltaDeAula  = (a) => faltasDia.find(f=>!f.hora||f.hora===a.hora);
-  const norm = (str) => (str||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+  const norm = (s) => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
   const scheduleFor  = (ev, date) => {
     const pool = [...(schedule||[]), ...(cronograma||[])];
     if (!pool.length) return null;
