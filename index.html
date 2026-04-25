@@ -747,11 +747,13 @@ function TabAgenda({ agenda, setAgenda, eventos, setEventos, schedule, cronogram
   const scheduleFor  = (ev, date) => {
     const pool = [...(schedule||[]), ...(cronograma||[])];
     if (!pool.length) return null;
-    const base = ev.desc.split('—')[0].trim().toLowerCase();
-    return pool.find(s =>
-      s.date === date &&
-      (s.subject.toLowerCase().includes(base) || base.includes(s.subject.toLowerCase()))
-    ) || null;
+    const base = ev?.desc ? ev.desc.split('—')[0].trim().toLowerCase() : '';
+    if (!base) return null;
+    return pool.find(s => {
+      if (!s || !s.subject || !s.date) return false;
+      const subj = s.subject.toLowerCase();
+      return s.date === date && (subj.includes(base) || base.includes(subj));
+    }) || null;
   };
 
   /* ── Calendário ── */
