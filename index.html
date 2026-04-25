@@ -313,11 +313,17 @@
   .b-y  { background: #fef3c7; color: #92400e; }
   .b-r  { background: #fee2e2; color: #991b1b; }
   .b-gr { background: var(--surf2); color: var(--muted); }
+  .b-blue { background: #dbeafe; color: #1e40af; }
+  .b-org  { background: #ffedd5; color: #c2410c; }
+  .b-vio  { background: #ede9fe; color: #6d28d9; }
   @media (prefers-color-scheme: dark) {
-    .b-g  { background: #064e3b; color: #6ee7b7; }
-    .b-t  { background: #0c4a6e; color: #7dd3fc; }
-    .b-y  { background: #78350f; color: #fcd34d; }
-    .b-r  { background: #7f1d1d; color: #fca5a5; }
+    .b-g    { background: #064e3b; color: #6ee7b7; }
+    .b-t    { background: #0c4a6e; color: #7dd3fc; }
+    .b-y    { background: #78350f; color: #fcd34d; }
+    .b-r    { background: #7f1d1d; color: #fca5a5; }
+    .b-blue { background: #1e3a8a; color: #93c5fd; }
+    .b-org  { background: #7c2d12; color: #fdba74; }
+    .b-vio  { background: #3b0764; color: #c4b5fd; }
   }
 
   /* ══════════════════════════════════
@@ -682,7 +688,7 @@ function TabInicio({ agenda, materias, provas }) {
 /* ══════════════════════════════════════════════════
    ABA: AGENDA
 ══════════════════════════════════════════════════ */
-function TabAgenda({ agenda, setAgenda, eventos, setEventos }) {
+function TabAgenda({ agenda, setAgenda, eventos, setEventos, schedule }) {
   const [view,      setView]      = useState('lista');
   const [diaK,      setDiaK]      = useState(hojek);
   const [semOff,    setSemOff]    = useState(0);
@@ -737,7 +743,15 @@ function TabAgenda({ agenda, setAgenda, eventos, setEventos }) {
   const evsDia     = eventos.filter(e=>e.data===selDate);
   const faltasDia  = evsDia.filter(e=>e.tipo==='falta');
   const aulasNoDia = [...(agenda[diaK]||[])].sort((a,b)=>a.hora.localeCompare(b.hora));
-  const faltaDeAula = (a) => faltasDia.find(f=>!f.hora||f.hora===a.hora);
+  const faltaDeAula  = (a) => faltasDia.find(f=>!f.hora||f.hora===a.hora);
+  const scheduleFor  = (ev, date) => {
+    if (!schedule?.length) return null;
+    const base = ev.desc.split('—')[0].trim().toLowerCase();
+    return schedule.find(s =>
+      s.date === date &&
+      (s.subject.toLowerCase().includes(base) || base.includes(s.subject.toLowerCase()))
+    ) || null;
+  };
 
   /* ── Calendário ── */
   const hoje     = new Date();
@@ -827,18 +841,44 @@ function TabAgenda({ agenda, setAgenda, eventos, setEventos }) {
               ? <div className="empty fi"><IcoCal/><div className="empty-t">Sem eventos</div><div className="empty-s">Nenhuma aula para {diaInfo.ext}</div></div>
               : <>
                   {aulasNoDia.map(ev=>{
-                    const f=faltaDeAula(ev);
+                    const f         = faltaDeAula(ev);
+                    const sched     = scheduleFor(ev, selDate);
+                    const nomeBase  = ev.desc.split('—')[0].trim();
+                    const localFb   = ev.desc.includes('—') ? ev.desc.split('—').slice(1).join('—').trim() : '';
+                    const local     = sched?.location || localFb;
+                    const isPratica = sched?.type === 'pratica';
+                    const isEspec   = sched?.type === 'especial';
+                    const jaleco    = sched?.requiresJaleco;
                     return (
-                      <div key={ev.id} className="item fi" style={f?{opacity:.55}:{}}>
-                        <div className="item-dot" style={{background:ev.cor||'var(--prim)'}}/>
+                      <div key={ev.id} className="item fi"
+                        style={{alignItems:'flex-start',...(f?{opacity:.55}:{})}}>
+                        <div className="item-dot" style={{background:ev.cor||'var(--prim)',marginTop:5,flexShrink:0}}/>
                         <div className="item-main">
-                          <div className="item-title">
-                            {f&&'🚫 '}{ev.desc}
-                            {f&&<span style={{fontSize:'.7rem',color:'#ef4444',marginLeft:5}}>falta</span>}
+                          <div style={{fontWeight:800,fontSize:'.82rem',letterSpacing:'.4px',
+                                       textTransform:'uppercase',lineHeight:1.2}}>
+                            {f&&'🚫 '}{nomeBase}
+                            {f&&<span style={{fontSize:'.7rem',color:'#ef4444',marginLeft:5,textTransform:'none'}}>falta</span>}
                           </div>
-                          <div className="item-sub" style={{color:ev.cor||'var(--muted)'}}>{ev.hora}</div>
+                          {sched?.theme&&(
+                            <div style={{fontSize:'.76rem',color:'var(--muted)',marginTop:3,lineHeight:1.35}}>
+                              {sched.theme}
+                            </div>
+                          )}
+                          <div style={{display:'flex',alignItems:'center',gap:5,marginTop:4,flexWrap:'wrap'}}>
+                            <span style={{fontSize:'.74rem',fontWeight:700,color:ev.cor||'var(--muted)',
+                                          fontFamily:'Sora,sans-serif'}}>{ev.hora}</span>
+                            {local&&<span style={{fontSize:'.72rem',color:'var(--muted)'}}>· {local}</span>}
+                          </div>
+                          {(isPratica||isEspec||jaleco)&&(
+                            <div style={{display:'flex',gap:4,marginTop:6,flexWrap:'wrap'}}>
+                              {isPratica&&<span className="badge b-blue" style={{fontSize:'.67rem',padding:'2px 8px'}}>Prática</span>}
+                              {jaleco&&<span className="badge b-org"  style={{fontSize:'.67rem',padding:'2px 8px'}}>🥼 Levar jaleco</span>}
+                              {isEspec&&<span className="badge b-vio"  style={{fontSize:'.67rem',padding:'2px 8px'}}>Especial</span>}
+                            </div>
+                          )}
                         </div>
-                        <button className="btn btn-d btn-sm" onClick={()=>delAula(ev.id)}><IcoTrash/></button>
+                        <button className="btn btn-d btn-sm" style={{flexShrink:0,marginTop:-2}}
+                          onClick={()=>delAula(ev.id)}><IcoTrash/></button>
                       </div>
                     );
                   })}
@@ -1556,6 +1596,7 @@ function App() {
   const [materias,   setMat]        = useState(() => ls('atlas_mat',   []));
   const [provas,     setPro]        = useState(() => ls('atlas_pro',   []));
   const [eventos,    setEvs]        = useState(() => ls('atlas_eventos', []));
+  const [schedule,   setSched]      = useState(() => ls('atlas_schedule', []));
 
   const ABAS = [
     { id:'inicio',   lbl:'Início',   Ico: IcoHome   },
@@ -1568,7 +1609,7 @@ function App() {
   const conteudo = (() => {
     switch (aba) {
       case 'inicio':   return <TabInicio   agenda={agenda} materias={materias} provas={provas}/>;
-      case 'agenda':   return <TabAgenda   agenda={agenda} setAgenda={setAgenda} eventos={eventos} setEventos={setEvs}/>;
+      case 'agenda':   return <TabAgenda   agenda={agenda} setAgenda={setAgenda} eventos={eventos} setEventos={setEvs} schedule={schedule}/>;
       case 'importar': return <TabImportar apiKey={apiKey}
                                            agenda={agenda} setAgenda={setAgenda}
                                            materias={materias} setMaterias={setMat}/>;
